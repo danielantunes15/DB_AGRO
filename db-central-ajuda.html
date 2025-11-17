@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Ajuda - DB Sistemas</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <style>
+        .chamado-card {
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: var(--border-radius-sm);
+            margin-bottom: 1rem;
+            background: #fdfdfd;
+        }
+        .chamado-card strong {
+            color: var(--primary-dark);
+            font-size: 1.1rem;
+        }
+        .chamado-card p {
+            margin: 0.5rem 0;
+            color: var(--text-color);
+        }
+        .chamado-card small {
+            color: var(--text-light);
+        }
+        #chamado-form {
+            margin-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+            display: none; /* Começa escondido */
+        }
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2c7744">
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="index.html" class="sidebar-logo">AGRO CANA FORTE</a>
+        </div>
+        
+        <nav class="nav" id="main-nav">
+            <div class="nav-item-single">
+                <a href="index.html" class="nav-link">Apontamentos</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="consulta-apontamentos.html" class="nav-link">Consulta</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="formularios.html" class="nav-link">Formulários</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="cadastro-fazendas.html" class="nav-link">Fazendas</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="cadastros-gerais.html" class="nav-link">Cadastros</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="relatorios-completos.html" class="nav-link">Relatórios</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="gerenciamento-usuarios.html" class="nav-link">Usuários</a>
+            </div>
+            <div class="nav-item-submenu">
+                <a href="#" class="nav-link nav-link-toggle">
+                    DB Sistemas
+                </a>
+                <div class="submenu">
+                    <a href="db-central-ajuda.html" class="submenu-link active">Central de Ajuda</a>
+                    <a href="db-faturas.html" class="submenu-link">Faturas</a>
+                </div>
+            </div>
+            <button id="logout-btn" class="btn-logout">Sair</button>
+        </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="main-content">
+        <header class="header">
+            <div class="container">
+                <button class="menu-toggle no-print" id="menu-toggle" aria-label="Abrir Menu">
+                    &#9776; 
+                </button>
+                
+                <h2 class="page-title" id="page-title">Central de Ajuda</h2>
+                
+                <div></div>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="container">
+                <div id="alert-container" aria-live="polite"></div>
+                
+                <div class="card">
+                    <h2>Meus Chamados (DB Sistemas)</h2>
+                    <p>Abra um novo chamado ou acompanhe o status dos chamados existentes.</p>
+                    
+                    <button class="btn btn-primary" id="novo-chamado-btn">Abrir Novo Chamado</button>
+                    
+                    <form id="chamado-form" class="form">
+                        <h3>Detalhes do Novo Chamado</h3>
+                        <div class="form-group">
+                            <label for="chamado-site">Associar ao Sistema (Opcional)</label>
+                            <select id="chamado-site" class="form-control">
+                                <option value="">Nenhum (Chamado geral)</option>
+                                </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="chamado-titulo">Título</label>
+                            <input type="text" id="chamado-titulo" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="chamado-descricao">Descrição</label>
+                            <textarea id="chamado-descricao" class="form-control" rows="4" required placeholder="Descreva seu problema ou dúvida..."></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" id="cancel-chamado-btn">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Enviar Chamado</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3>Chamados Abertos</h3>
+                    <div id="chamados-list-container">
+                        <p>Carregando chamados...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div> 
+
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script>
+    
+    <script src="js/db-central-ajuda.js"></script>
+</body>
+</html>

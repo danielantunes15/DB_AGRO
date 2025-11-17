@@ -1,0 +1,217 @@
+/* ===== ESTILOS ESPECÍFICOS PARA CADASTRO DE FAZENDAS ===== */
+
+/* Container principal específico */
+.fazendas-container {
+    display: grid;
+    gap: 2rem;
+}
+
+/* Estilos para cards de formulário */
+.form-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-card h2 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-size: 1.4rem;
+}
+
+/* Itens de fazenda */
+.fazenda-item {
+    background: #f8f9fa;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid var(--primary-color);
+}
+
+.fazenda-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.fazenda-title {
+    color: var(--primary-color);
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.fazenda-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Tabela de talhões dentro da fazenda */
+.talhoes-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--white);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.talhoes-table th {
+    background: var(--primary-color);
+    color: var(--white);
+    padding: 1rem;
+    font-weight: 600;
+    text-align: left;
+}
+
+.talhoes-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.talhoes-table tr:last-child td {
+    border-bottom: none;
+}
+
+.talhoes-table tr:hover {
+    background-color: rgba(44, 119, 68, 0.05);
+}
+
+/* Preço por metro destacado */
+.preco-metro {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-family: 'Courier New', monospace;
+}
+
+/* Mensagem de nenhum talhão */
+.no-talhoes {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-light);
+    font-style: italic;
+}
+
+/* Botões específicos */
+.btn-remove {
+    background-color: var(--danger-color);
+    color: var(--white);
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: var(--transition);
+}
+
+.btn-remove:hover {
+    background-color: var(--danger-dark);
+    transform: translateY(-1px);
+}
+
+/* Formulários específicos */
+.fazenda-form .form-group,
+.talhao-form .form-group {
+    margin-bottom: 1.2rem;
+}
+
+.talhao-form .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Modal de detalhes */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: var(--white);
+    margin: 5% auto;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    width: 90%;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--text-light);
+}
+
+.close:hover {
+    color: var(--danger-color);
+}
+
+/* Responsividade específica */
+@media (max-width: 768px) {
+    .fazenda-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .fazenda-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .talhao-form .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+        padding: 1rem;
+    }
+    
+    .talhoes-table {
+        font-size: 0.8rem;
+    }
+    
+    .talhoes-table th,
+    .talhoes-table td {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .fazenda-item {
+        padding: 1rem;
+    }
+    
+    .fazenda-title {
+        font-size: 1.1rem;
+    }
+    
+    .form-card {
+        padding: 1rem;
+    }
+    
+    .form-card h2 {
+        font-size: 1.2rem;
+    }
+}

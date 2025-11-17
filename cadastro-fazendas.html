@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Fazendas - AGRO CANA FORTE</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout.css"> <link rel="stylesheet" href="css/cadastro-fazendas.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2c7744">
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="index.html" class="sidebar-logo">AGRO CANA FORTE</a>
+        </div>
+        
+        <nav class="nav" id="main-nav">
+            <a href="index.html" class="nav-link">Apontamentos</a>
+            <a href="consulta-apontamentos.html" class="nav-link">Consulta</a>
+            <a href="formularios.html" class="nav-link">Formulários</a>
+            <a href="cadastro-fazendas.html" class="nav-link active">Fazendas</a>
+            <a href="cadastros-gerais.html" class="nav-link">Cadastros</a>
+            <a href="relatorios-completos.html" class="nav-link">Relatórios</a>
+            <a href="gerenciamento-usuarios.html" class="nav-link">Usuários</a>
+            <button id="logout-btn" class="btn-logout">Sair</button>
+        </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="main-content">
+
+        <header class="header">
+            <div class="container">
+                <button class="menu-toggle no-print" id="menu-toggle" aria-label="Abrir Menu">
+                    &#9776; 
+                </button>
+                
+                <h2 class="page-title" id="page-title">Fazendas</h2>
+                
+                <div></div>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="container">
+                <div id="loading" class="card">
+                    <div class="spinner"></div>
+                    <p style="text-align: center;">Conectando ao banco de dados...</p>
+                </div>
+
+                <div id="content" style="display: none;">
+                    <div class="card">
+                        <h2>Cadastro de Fazendas</h2>
+                        
+                        <form id="fazenda-form" class="form">
+                            <div class="form-group">
+                                <label for="nome-fazenda">Nome da Fazenda *</label>
+                                <input type="text" id="nome-fazenda" required placeholder="Digite o nome da fazenda">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="proprietario-fazenda">Proprietário</label>
+                                <input type="text" id="proprietario-fazenda" placeholder="Nome do proprietário">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="telefone-fazenda">Telefone de Contato</label>
+                                <input type="text" id="telefone-fazenda" placeholder="(00) 00000-0000">
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Salvar Fazenda</button>
+                                <button type="button" id="limpar-fazenda" class="btn btn-secondary">Limpar</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="card">
+                        <h2>Cadastro de Talhões</h2>
+                        
+                        <form id="talhao-form" class="form">
+                            <div class="form-group">
+                                <label for="fazenda-talhao">Fazenda *</label>
+                                <select id="fazenda-talhao" required>
+                                    <option value="">Selecione a fazenda</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="numero-talhao">Número do Talhão *</label>
+                                    <input type="number" id="numero-talhao" min="1" required placeholder="Ex: 1">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="area-talhao">Área (hectares) *</label>
+                                    <input type="number" id="area-talhao" step="0.01" min="0.01" required placeholder="Ex: 10.5">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="espacamento-talhao">Espaçamento (metros) *</label>
+                                    <input type="number" id="espacamento-talhao" step="0.01" min="0.5" required placeholder="Ex: 1.5">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="preco-tonelada">Preço por Tonelada (R$) *</label>
+                                    <input type="number" id="preco-tonelada" step="0.01" min="0" value="10.00" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="producao-estimada">Produção Estimada (t/ha)</label>
+                                <input type="number" id="producao-estimada" step="0.01" min="0" value="100.00" placeholder="Produção estimada por hectare">
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Salvar Talhão</button>
+                                <button type="button" id="limpar-talhao" class="btn btn-secondary">Limpar</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="card">
+                        <h2>Fazendas e Talhões Cadastrados</h2>
+                        <div id="fazendas-list" class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Fazenda</th>
+                                        <th>Proprietário</th>
+                                        <th>Talhões</th>
+                                        <th>Área Total</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-fazendas">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center;">Carregando fazendas...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="error-message" class="card" style="display: none; background-color: #f8d7da; color: #721c24;">
+                    <h2>Erro de Conexão</h2>
+                    <p>Não foi possível conectar ao banco de dados.</p>
+                    <button onclick="location.reload()" class="btn btn-primary">Tentar Novamente</button>
+                </div>
+            </div>
+        </main>
+    </div> <div id="modal-talhoes" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Talhões da Fazenda</h3>
+            <div id="detalhes-talhoes" class="table-container">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://fwkybhfzfrovjausuqgn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3a3liaGZ6ZnJvdmphdXN1cWduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MDI4OTgsImV4cCI6MjA3NDA3ODg5OH0.M7fN2ML2C4Lc1skLZx9YWyA9CUq813V6DNXP2QdTV0E';
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script> <script src="js/fazendas.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Funcionalidade do modal
+            const modal = document.getElementById('modal-talhoes');
+            const closeBtn = document.querySelector('.close');
+
+            function openModal() {
+                modal.style.display = 'block';
+            }
+
+            function closeModal() {
+                modal.style.display = 'none';
+            }
+
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+            window.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+
+            // Botões de limpar formulário
+            const limparFazendaBtn = document.getElementById('limpar-fazenda');
+            const limparTalhaoBtn = document.getElementById('limpar-talhao');
+
+            if (limparFazendaBtn) {
+                limparFazendaBtn.addEventListener('click', function() {
+                    document.getElementById('fazenda-form').reset();
+                });
+            }
+
+            if (limparTalhaoBtn) {
+                limparTalhaoBtn.addEventListener('click', function() {
+                    document.getElementById('talhao-form').reset();
+                });
+            }
+        });
+    </script>
+</body>
+</html>

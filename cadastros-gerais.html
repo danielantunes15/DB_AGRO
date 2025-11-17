@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastros Gerais - AGRO CANA FORTE</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout.css"> <link rel="stylesheet" href="css/cadastros-gerais.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2c7744">
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="index.html" class="sidebar-logo">AGRO CANA FORTE</a>
+        </div>
+        
+        <nav class="nav" id="main-nav">
+            <a href="index.html" class="nav-link">Apontamentos</a>
+            <a href="consulta-apontamentos.html" class="nav-link">Consulta</a>
+            <a href="formularios.html" class="nav-link">Formulários</a>
+            <a href="cadastro-fazendas.html" class="nav-link">Fazendas</a>
+            <a href="cadastros-gerais.html" class="nav-link active">Cadastros</a>
+            <a href="relatorios-completos.html" class="nav-link">Relatórios</a>
+            <a href="gerenciamento-usuarios.html" class="nav-link">Usuários</a>
+            <button id="logout-btn" class="btn-logout">Sair</button>
+        </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="main-content">
+
+        <header class="header">
+            <div class="container">
+                <button class="menu-toggle no-print" id="menu-toggle" aria-label="Abrir Menu">
+                    &#9776; 
+                </button>
+                
+                <h2 class="page-title" id="page-title">Cadastros</h2>
+                
+                <div></div>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="container">
+                <div id="alert-container" aria-live="polite"></div>
+
+                <div id="loading" class="card">
+                    <div class="spinner"></div>
+                    <p style="text-align: center;">Conectando ao banco de dados...</p>
+                </div>
+
+                <div id="content" style="display: none;">
+                    <div class="card">
+                        <h2>Cadastro de Funcionários</h2>
+                        
+                        <form id="funcionario-form" class="form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="nome-funcionario">Nome Completo *</label>
+                                    <input type="text" id="nome-funcionario" required placeholder="Digite o nome completo">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cpf-funcionario">CPF *</label>
+                                    <input type="text" id="cpf-funcionario" required placeholder="000.000.000-00">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="codigo-funcionario">Código</label>
+                                    <input type="text" id="codigo-funcionario" required maxlength="2" placeholder="01">
+                                </div>
+                                <div class="form-group">
+                                    <label for="nascimento-funcionario">Data de Nascimento *</label>
+                                    <input type="date" id="nascimento-funcionario" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="telefone-funcionario">Telefone</label>
+                                    <input type="text" id="telefone-funcionario" placeholder="(00) 00000-0000">
+                                </div>
+                                <div class="form-group">
+                                    <label for="funcao-funcionario">Função *</label>
+                                    <select id="funcao-funcionario" required>
+                                        <option value="">Selecione a função</option>
+                                        <option value="cortador">Cortador de Cana</option>
+                                        <option value="apontador">Apontador</option>
+                                        <option value="fiscal">Fiscal de Corte</option>
+                                        <option value="motorista">Motorista</option>
+                                        <option value="encarregado">Encarregado</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="turma-funcionario">Turma *</label>
+                                    <select id="turma-funcionario" required>
+                                        <option value="">Selecione a turma</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Salvar Funcionário</button>
+                                <button type="button" id="limpar-funcionario" class="btn btn-secondary">Limpar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2>Cadastro de Turmas</h2>
+                        
+                        <form id="turma-form" class="form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="nome-turma">Nome da Turma *</label>
+                                    <input type="text" id="nome-turma" required placeholder="Ex: Turma 1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="encarregado-turma">Encarregado</label>
+                                    <input type="text" id="encarregado-turma" placeholder="Nome do encarregado">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="observacao-turma">Observações</label>
+                                <textarea id="observacao-turma" rows="3" placeholder="Observações sobre a turma"></textarea>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Salvar Turma</button>
+                                <button type="button" id="limpar-turma" class="btn btn-secondary">Limpar</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h2>Filtros de Funcionários</h2>
+                        <form id="filtro-funcionarios-form" class="form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="filtro-nome-cpf">Nome ou CPF</label>
+                                    <input type="text" id="filtro-nome-cpf" placeholder="Buscar por nome ou CPF">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filtro-turma">Filtrar por Turma</label>
+                                    <select id="filtro-turma">
+                                        <option value="">Todas as Turmas</option>
+                                        </select>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Buscar e Filtrar</button>
+                                <button type="button" id="limpar-filtro-funcionarios" class="btn btn-secondary">Limpar Filtros</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card">
+                        <h2>Funcionários Cadastrados</h2>
+                        <div id="funcionarios-list" class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Cód.</th>
+                                        <th>Nome</th>
+                                        <th>CPF</th>
+                                        <th>Função</th>
+                                        <th>Turma</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-funcionarios">
+                                    <tr>
+                                        <td colspan="7" style="text-align: center;">Carregando funcionários...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2>Turmas Cadastradas</h2>
+                        <div id="turmas-list" class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Encarregado</th>
+                                        <th>Funcionários</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-turmas">
+                                    <tr>
+                                        <td colspan="5" style="text-align: center;">Carregando turmas...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="error-message" class="card" style="display: none; background-color: #f8d7da; color: #721c24;">
+                    <h2>Erro de Conexão</h2>
+                    <p>Não foi possível conectar ao banco de dados.</p>
+                    <button onclick="location.reload()" class="btn btn-primary">Tentar Novamente</button>
+                </div>
+            </div>
+        </main>
+    </div> <div id="modal-edicao" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="modal-titulo">Editar</h3>
+            <div id="modal-conteudo">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://fwkybhfzfrovjausuqgn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3a3liaGZ6ZnJvdmphdXN1cWduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MDI4OTgsImV4cCI6MjA3NDA3ODg5OH0.M7fN2ML2C4Lc1skLZx9YWyA9CUq813V6DNXP2QdTV0E';
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script> <script src="js/cadastros-gerais.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Funcionalidade do modal
+            const modal = document.getElementById('modal-edicao');
+            const closeBtn = document.querySelector('.close');
+
+            function openModal() {
+                modal.style.display = 'block';
+            }
+
+            function closeModal() {
+                modal.style.display = 'none';
+            }
+
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+            window.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+
+            // Botões de limpar formulário
+            const limparFuncionarioBtn = document.getElementById('limpar-funcionario');
+            const limparTurmaBtn = document.getElementById('limpar-turma');
+
+            if (limparFuncionarioBtn) {
+                limparFuncionarioBtn.addEventListener('click', function() {
+                    document.getElementById('funcionario-form').reset();
+                });
+            }
+
+            if (limparTurmaBtn) {
+                limparTurmaBtn.addEventListener('click', function() {
+                    document.getElementById('turma-form').reset();
+                });
+            }
+        });
+    </script>
+</body>
+</html>

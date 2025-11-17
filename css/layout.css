@@ -1,0 +1,292 @@
+/* css/layout.css - NOVO ARQUIVO PARA O LAYOUT MODERN */
+
+:root {
+    --sidebar-width: 260px; /* Largura da sidebar */
+    --header-height: 70px;  /* Altura do cabeçalho de conteúdo */
+}
+
+/* 1. Resetar o layout do body e header original */
+body {
+    display: flex;
+    background-color: #f0f2f5; /* Fundo mais claro */
+    overflow-x: hidden; /* Evitar scroll horizontal */
+}
+
+/* Resetar o header original de style.css */
+.header {
+    background: var(--white); /* Mudar para branco */
+    color: var(--dark-color);
+    position: sticky; /* Manter o cabeçalho do conteúdo fixo */
+    top: 0;
+    z-index: 900; /* Abaixo da sidebar */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 1.5rem; /* Ajustar padding */
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+/* Título da página (novo) */
+.page-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+/* 2. Estilos da Sidebar (Menu Esquerdo) */
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    background: linear-gradient(180deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: var(--white);
+    padding: 1.5rem 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 1001; /* Acima de tudo */
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.sidebar-header {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-logo {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--white);
+    text-decoration: none;
+}
+
+/* 3. Estilos da Navegação (Nav) dentro da Sidebar */
+.sidebar .nav {
+    flex-grow: 1; /* Ocupa o espaço restante */
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem; /* Espaçamento entre links */
+    padding-top: 1.5rem;
+    align-items: stretch; /* Links ocupam 100% da largura */
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.85);
+    padding: 0.9rem 1.5rem; /* Padding interno */
+    margin: 0 1rem; /* Margens laterais */
+    border-radius: var(--border-radius-sm);
+    text-decoration: none;
+    font-weight: 500;
+    display: block; /* Para ocupar a largura */
+    transition: var(--transition);
+    border: none;
+}
+
+/* Hover/Active dos links da sidebar */
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: var(--white);
+    transform: none; /* Resetar transform de style.css */
+}
+
+/* Botão Sair na sidebar */
+.sidebar .btn-logout {
+    margin: auto 1rem 1rem 1rem; /* Fica no final */
+    width: auto; /* Ajusta a largura */
+    background-color: var(--danger-color);
+}
+
+.sidebar .btn-logout:hover {
+    background-color: var(--danger-dark);
+}
+
+/* 4. Estilos do Conteúdo Principal */
+.main-content {
+    flex-grow: 1;
+    margin-left: var(--sidebar-width); /* Empurra o conteúdo para a direita */
+    width: calc(100% - var(--sidebar-width));
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto; /* Scroll apenas no conteúdo */
+}
+
+/* O <main> original agora fica dentro do .main-content */
+.main-content .main {
+    flex-grow: 1;
+    padding: 1.5rem; /* Padding do conteúdo */
+    background-color: #f0f2f5;
+}
+
+.main-content .main .container {
+     padding: 0; /* Container principal já tem padding */
+     max-width: 100%;
+}
+
+
+/* 5. Responsividade (Mobile) */
+
+/* Botão de Menu (Hamburger) */
+.menu-toggle {
+    display: none; /* Esconder no desktop */
+    font-size: 1.8rem;
+    color: var(--text-color); /* Cor escura, pois está no header branco */
+    cursor: pointer;
+    z-index: 1002; /* Acima de tudo */
+    background: none;
+    border: none;
+    line-height: 1;
+}
+
+/* Overlay para fechar o menu no mobile */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+}
+
+@media (max-width: 1024px) {
+    /* 1. Sidebar fica escondida por padrão */
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    /* 2. Quando 'sidebar-open' é adicionada ao body, a sidebar aparece */
+    body.sidebar-open .sidebar {
+        transform: translateX(0);
+    }
+    
+    /* 3. O overlay aparece */
+    body.sidebar-open .sidebar-overlay {
+        display: block;
+    }
+    
+    /* 4. Conteúdo principal ocupa 100% */
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    /* 5. Mostrar o botão hamburger */
+    .menu-toggle {
+        display: block;
+    }
+    
+    /* 6. Esconder o logo original do header, pois ele está na sidebar */
+    .header .logo {
+        display: none;
+    }
+    
+    /* 7. Ajustar o padding do main */
+    .main-content .main {
+        padding: 1rem;
+    }
+}
+
+/* --- ESTILOS PARA SUBMENU (Adicionar ao final de css/layout.css) --- */
+
+/* Remove a margem individual dos links, pois o 'gap' da nav cuida disso */
+.sidebar .nav-link {
+    margin: 0;
+}
+
+/* Wrapper para links normais */
+.nav-item-single {
+     border-radius: var(--border-radius-sm);
+}
+.nav-item-single .nav-link:hover,
+.nav-item-single .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: var(--white);
+}
+
+/* Contêiner para o item de menu que tem submenu */
+.nav-item-submenu {
+    border-radius: var(--border-radius-sm);
+    transition: background-color 0.3s ease;
+}
+
+/* O link principal clicável */
+.nav-item-submenu .nav-link-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.9rem 1.5rem; /* Mesmo padding dos links normais */
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+}
+
+/* Seta (ícone) */
+.submenu-arrow {
+    font-size: 0.8rem;
+    transform: rotate(0deg);
+    transition: transform 0.3s ease;
+}
+
+/* Contêiner do Submenu (escondido) */
+.submenu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    background-color: rgba(0, 0, 0, 0.15); /* Fundo ligeiramente mais escuro */
+    border-radius: 0 0 var(--border-radius-sm) var(--border-radius-sm);
+    padding: 0;
+    margin-top: -5px; /* Puxa para baixo do link pai */
+}
+
+/* Estado aberto do submenu */
+.submenu.open {
+    max-height: 200px; /* Altura máxima para animar */
+    padding: 0.5rem 0;
+}
+
+/* Links do submenu */
+.submenu-link {
+    display: block;
+    color: rgba(255, 255, 255, 0.75);
+    padding: 0.6rem 1.5rem 0.6rem 2.5rem; /* Indentação */
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.submenu-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--white);
+}
+
+/* Quando o submenu está aberto, o link pai fica destacado */
+.nav-item-submenu.open .nav-link-toggle {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--white);
+    border-radius: var(--border-radius-sm) var(--border-radius-sm) 0 0;
+}
+
+.nav-item-submenu.open .submenu-arrow {
+    transform: rotate(90deg);
+}
+

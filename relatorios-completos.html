@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios Completos - Espelho de Produção | AGRO CANA FORTE</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout.css"> <link rel="stylesheet" href="css/relatorios.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes"> <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2c7744">
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="index.html" class="sidebar-logo">AGRO CANA FORTE</a>
+        </div>
+        
+        <nav class="nav" id="main-nav">
+            <a href="index.html" class="nav-link">Apontamentos</a>
+            <a href="consulta-apontamentos.html" class="nav-link">Consulta</a>
+            <a href="formularios.html" class="nav-link">Formulários</a>
+            <a href="cadastro-fazendas.html" class="nav-link">Fazendas</a>
+            <a href="cadastros-gerais.html" class="nav-link">Cadastros</a>
+            <a href="relatorios-completos.html" class="nav-link active">Relatórios</a>
+            <a href="gerenciamento-usuarios.html" class="nav-link">Usuários</a>
+            <button id="logout-btn" class="btn-logout">Sair</button>
+        </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="main-content">
+
+        <header class="header">
+            <div class="container">
+                <button class="menu-toggle no-print" id="menu-toggle" aria-label="Abrir Menu">
+                    &#9776; 
+                </button>
+                
+                <h2 class="page-title" id="page-title">Relatórios</h2>
+                
+                <div></div>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="container">
+                <div id="alert-container" aria-live="polite"></div> <div id="loading" class="loading">
+                    <div class="spinner"></div>
+                    <p>Carregando sistema de relatórios...</p>
+                </div>
+
+                <div id="content" style="display: none;">
+                    <div class="card">
+                        <h2>📊 Relatórios Completos - Espelho de Produção</h2>
+                        <p>Gere relatórios detalhados de produção por funcionário, turma ou geral</p>
+                        
+                        <div class="filters-panel no-print">
+                            <h3>🔍 Filtros do Relatório</h3>
+                            
+                            <div class="filters-grid">
+                                <div class="filter-group">
+                                    <h4>👥 Tipo de Relatório</h4>
+                                    <div class="form-group">
+                                        <select id="tipo-relatorio" required>
+                                            <option value="funcionario">Por Funcionário</option>
+                                            <option value="turma">Por Turma</option>
+                                            <option value="geral">Relatório Geral</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="filter-group" id="funcionario-group">
+                                    <h4>👤 Funcionário</h4>
+                                    <div class="form-group">
+                                        <select id="funcionario-filtro">
+                                            <option value="">Selecione o funcionário</option>
+                                            <option value="todos">Todos os Funcionários</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="filter-group" id="turma-group" style="display: none;">
+                                    <h4>👥 Turma</h4>
+                                    <div class="form-group">
+                                        <select id="turma-filtro">
+                                            <option value="">Selecione a turma</option>
+                                            <option value="todos">Todas as Turmas</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="filters-grid">
+                                <div class="filter-group">
+                                    <h4>Fazenda</h4>
+                                    <div class="form-group">
+                                        <select id="fazenda-filtro">
+                                            <option value="">Todas as Fazendas</option>
+                                            <option value="todos">Todas as Fazendas</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="filter-group">
+                                    <h4>📅 Período</h4>
+                                    <div class="form-group">
+                                        <label for="data-inicio">Data Início *</label>
+                                        <input type="date" id="data-inicio" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="data-fim">Data Fim *</label>
+                                        <input type="date" id="data-fim" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="filter-group">
+                                    <h4>⚙️ Opções</h4>
+                                    <div class="form-group">
+                                        <label for="ordenacao">Ordenar por</label>
+                                        <select id="ordenacao">
+                                            <option value="data_desc">Data (Mais Recente)</option>
+                                            <option value="data_asc">Data (Mais Antiga)</option>
+                                            <option value="valor_desc">Valor (Maior)</option>
+                                            <option value="valor_asc">Valor (Menor)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" id="agrupar-por-data" checked>
+                                        <label for="agrupar-por-data">Agrupar por data</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" id="gerar-relatorio" class="btn btn-primary">
+                                    📈 Gerar Relatório
+                                </button>
+                                <button type="button" id="limpar-filtros" class="btn btn-secondary">
+                                    🔄 Limpar Filtros
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="error-message" class="error-message" style="display: none;">
+                            <h3>Erro de Conexão</h3>
+                            <p>Não foi possível conectar ao banco de dados.</p>
+                            <button onclick="location.reload()" class="btn btn-primary">Tentar Novamente</button>
+                        </div>
+                        
+                        <div id="sem-dados" class="no-data-message">
+                            <div style="font-size: 4rem;">📭</div>
+                            <h3>Nenhum dado encontrado</h3>
+                            <p>Não foram encontrados registros de produção para os filtros selecionados.</p>
+                            <p>Selecione os filtros e clique em "Gerar Relatório".</p>
+                        </div>
+                        
+                        <div id="relatorio-container" class="report-content">
+                            <div class="report-header">
+                                <h1 style="margin: 0; color: white; font-size: 2.2rem;">ESPELHO DE PRODUÇÃO - CORTE DE CANA</h1>
+                                <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 1.1rem;">Relatório detalhado de produção</p>
+                            </div>
+                            
+                            <div class="info-grid">
+                                <div class="info-card">
+                                    <div class="info-label">Tipo de Relatório</div>
+                                    <div class="info-value" id="relatorio-tipo">-</div>
+                                </div>
+                                <div class="info-card">
+                                    <div class="info-label">Período do Relatório</div>
+                                    <div class="info-value" id="relatorio-periodo">-</div>
+                                </div>
+                                <div class="info-card">
+                                    <div class="info-label">Data de Emissão</div>
+                                    <div class="info-value" id="relatorio-emissao">-</div>
+                                </div>
+                                <div class="info-card">
+                                    <div class="info-label">Total de Registros</div>
+                                    <div class="info-value" id="relatorio-registros">-</div>
+                                </div>
+                            </div>
+                            
+                            <div class="summary-cards">
+                                <div class="summary-card">
+                                    <div class="summary-label">Total de Dias</div>
+                                    <div class="summary-value" id="total-dias">0</div>
+                                    <small>Dias trabalhados</small>
+                                </div>
+                                <div class="summary-card">
+                                    <div class="summary-label">Funcionários</div>
+                                    <div class="summary-value" id="total-funcionarios">0</div>
+                                    <small>Pessoas envolvidas</small>
+                                </div>
+                                <div class="summary-card">
+                                    <div class="summary-label">Metros Cortados</div>
+                                    <div class="summary-value" id="total-metros">0</div>
+                                    <small>Metros lineares</small>
+                                </div>
+                                <div class="summary-card">
+                                    <div class="summary-label">Valor Total</div>
+                                    <div class="summary-value" id="total-valor">R$ 0</div>
+                                    <small>Valor bruto</small>
+                                </div>
+                            </div>
+                            
+                            <div class="action-buttons no-print">
+                                <button id="exportar-pdf" class="btn-pdf">
+                                    📥 Exportar PDF Profissional
+                                </button>
+                                <button id="exportar-excel" class="btn-pdf btn-print" style="background-color: #1e7e34;">
+                                    📑 Exportar Excel
+                                </button>
+                                <button id="imprimir-relatorio" class="btn-pdf btn-print">
+                                    🖨️ Imprimir Relatório
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <h3>📋 Detalhamento da Produção</h3>
+                                <div class="table-container">
+                                    <table class="details-table" id="tabela-detalhes">
+                                        <thead>
+                                            <tr>
+                                                <th>Data</th>
+                                                <th>Funcionário</th>
+                                                <th>Turma</th>
+                                                <th>Fazenda</th>
+                                                <th>Talhão</th>
+                                                <th>Preço/m (R$)</th>
+                                                <th>Metros (m)</th>
+                                                <th>Valor (R$)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="detalhes-producao">
+                                            </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div> <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://fwkybhfzfrovjausuqgn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3a3liaGZ6ZnJvdmphdXN1cWduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MDI4OTgsImV4cCI6MjA3NDA3ODg5OH0.M7fN2ML2C4Lc1skLZx9YWyA9CUq813V6DNXP2QdTV0E';
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+    
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script> <script src="js/relatorios-completos.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configurar datas padrão
+            const dataInicio = document.getElementById('data-inicio');
+            const dataFim = document.getElementById('data-fim');
+            
+            if (dataInicio && dataFim) {
+                const hoje = new Date();
+                const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                
+                dataInicio.value = primeiroDiaMes.toISOString().split('T')[0];
+                dataFim.value = hoje.toISOString().split('T')[0];
+            }
+
+            // Controle de exibição dos grupos de filtro
+            const tipoRelatorio = document.getElementById('tipo-relatorio');
+            const funcionarioGroup = document.getElementById('funcionario-group');
+            const turmaGroup = document.getElementById('turma-group');
+
+            if (tipoRelatorio) {
+                tipoRelatorio.addEventListener('change', function() {
+                    if (this.value === 'turma') {
+                        funcionarioGroup.style.display = 'none';
+                        turmaGroup.style.display = 'block';
+                    } else if (this.value === 'funcionario') {
+                        funcionarioGroup.style.display = 'block';
+                        turmaGroup.style.display = 'none';
+                    } else {
+                        funcionarioGroup.style.display = 'none';
+                        turmaGroup.style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

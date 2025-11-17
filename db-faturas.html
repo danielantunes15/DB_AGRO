@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faturas - DB Sistemas</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <style>
+        .site-faturas-card {
+            margin-bottom: 2rem;
+            border-left: 4px solid var(--primary-color);
+        }
+        .site-faturas-card h3 {
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+        }
+        .fatura-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .fatura-item:last-child {
+            border-bottom: none;
+        }
+        .fatura-item.pendente {
+            background-color: #fffaf0;
+        }
+        .fatura-item.atrasado {
+            background-color: #fff5f5;
+            border-left: 3px solid var(--danger-color);
+        }
+        .fatura-info strong {
+            font-size: 1.1rem;
+        }
+        .fatura-info span {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            display: block;
+        }
+        .fatura-status {
+            font-weight: 600;
+        }
+        .status-pago {
+            color: var(--success-color);
+        }
+        .status-pendente {
+            color: #f0ad4e;
+        }
+        .status-atrasado {
+            color: var(--danger-color);
+        }
+    </style>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2c7744">
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="index.html" class="sidebar-logo">AGRO CANA FORTE</a>
+        </div>
+        
+        <nav class="nav" id="main-nav">
+            <div class="nav-item-single">
+                <a href="index.html" class="nav-link">Apontamentos</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="consulta-apontamentos.html" class="nav-link">Consulta</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="formularios.html" class="nav-link">Formulários</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="cadastro-fazendas.html" class="nav-link">Fazendas</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="cadastros-gerais.html" class="nav-link">Cadastros</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="relatorios-completos.html" class="nav-link">Relatórios</a>
+            </div>
+            <div class="nav-item-single">
+                <a href="gerenciamento-usuarios.html" class="nav-link">Usuários</a>
+            </div>
+            <div class="nav-item-submenu">
+                <a href="#" class="nav-link nav-link-toggle">
+                    DB Sistemas
+                </a>
+                <div class="submenu">
+                    <a href="db-central-ajuda.html" class="submenu-link">Central de Ajuda</a>
+                    <a href="db-faturas.html" class="submenu-link active">Faturas</a>
+                </div>
+            </div>
+            <button id="logout-btn" class="btn-logout">Sair</button>
+        </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="main-content">
+        <header class="header">
+            <div class="container">
+                <button class="menu-toggle no-print" id="menu-toggle" aria-label="Abrir Menu">
+                    &#9776; 
+                </button>
+                
+                <h2 class="page-title" id="page-title">Faturas</h2>
+                
+                <div></div>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="container">
+                <div id="alert-container" aria-live="polite"></div>
+                
+                <div class="card">
+                    <h2>Faturas dos seus Sistemas (DB Sistemas)</h2>
+                    <p>Acompanhe o status de pagamento de todos os seus sistemas cadastrados.</p>
+                </div>
+
+                <div id="faturas-container">
+                    <div class="card">
+                        <div class="spinner"></div>
+                        <p style="text-align: center;">Carregando faturas...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div> 
+
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script>
+    
+    <script src="js/db-faturas.js"></script>
+</body>
+</html>

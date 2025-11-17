@@ -1,0 +1,295 @@
+/* ===== ESTILOS ESPECÍFICOS PARA CONSULTA DE APONTAMENTOS ===== */
+
+/* Filtros */
+.filtros-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.filtros-card h2 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-size: 1.4rem;
+}
+
+.filtros-form .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Resultados */
+.resultados-card {
+    background: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+}
+
+.resultados-card h2 {
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.5rem;
+    font-size: 1.4rem;
+}
+
+/* Tabela de apontamentos */
+.apontamentos-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.apontamentos-table th {
+    background: var(--primary-color);
+    color: var(--white);
+    padding: 1rem;
+    font-weight: 600;
+    text-align: left;
+    position: sticky;
+    top: 0;
+}
+
+.apontamentos-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.apontamentos-table tr:hover {
+    background-color: rgba(44, 119, 68, 0.05);
+}
+
+/* Destaques na tabela */
+.valor-destaque {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-family: 'Courier New', monospace;
+}
+
+.metros-destaque {
+    font-weight: 600;
+    color: var(--secondary-dark);
+}
+
+/* Grupo de apontamentos */
+.apontamento-grupo {
+    border-left: 3px solid var(--primary-color);
+    background-color: rgba(44, 119, 68, 0.02);
+}
+
+.apontamento-grupo:first-child {
+    border-top: none;
+}
+
+/* Modal de edição */
+.modal-edicao-apontamento {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-edicao-content {
+    background-color: var(--white);
+    margin: 2% auto;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.modal-header h3 {
+    color: var(--primary-color);
+    margin: 0;
+}
+
+/* Cortes de funcionários no modal */
+.cortes-container {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: var(--border-radius);
+}
+
+.cortes-container h4 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.corte-item {
+    background: var(--white);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: var(--border-radius-sm);
+    border-left: 3px solid var(--primary-light);
+}
+
+.corte-item:last-child {
+    margin-bottom: 0;
+}
+
+/* Botões de ação específicos */
+.btn-excluir-corte {
+    background-color: #ff6b6b;
+    color: var(--white);
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+}
+
+.btn-excluir-corte:hover {
+    background-color: #ff5252;
+}
+
+.btn-excluir-tudo {
+    background-color: var(--danger-color);
+    color: var(--white);
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+}
+
+.btn-excluir-tudo:hover {
+    background-color: var(--danger-dark);
+}
+
+/* Estatísticas rápidas */
+.estatisticas-rapidas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.estatistica-item {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    color: var(--white);
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    text-align: center;
+}
+
+.estatistica-valor {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.estatistica-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+/* Responsividade específica */
+@media (max-width: 1024px) {
+    .modal-edicao-content {
+        width: 95%;
+        margin: 5% auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .filtros-form .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .filtros-card,
+    .resultados-card {
+        padding: 1rem;
+    }
+    
+    .apontamentos-table {
+        font-size: 0.8rem;
+    }
+    
+    .apontamentos-table th,
+    .apontamentos-table td {
+        padding: 0.5rem;
+    }
+    
+    .modal-edicao-content {
+        padding: 1rem;
+        margin: 2% auto;
+    }
+    
+    .modal-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .estatisticas-rapidas {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .filtros-card h2,
+    .resultados-card h2 {
+        font-size: 1.2rem;
+    }
+    
+    .estatisticas-rapidas {
+        grid-template-columns: 1fr;
+    }
+    
+    .corte-item {
+        padding: 0.8rem;
+    }
+    
+    .btn-excluir-corte,
+    .btn-excluir-tudo {
+        display: block;
+        width: 100%;
+        margin: 0.5rem 0 0 0;
+    }
+}
+
+/* Scroll personalizado para tabelas */
+.table-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}

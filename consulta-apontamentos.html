@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Apontamentos - CanaSystem</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout.css"> <link rel="stylesheet" href="css/consulta-apontamentos.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2c7744">
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="index.html" class="sidebar-logo">AGRO CANA FORTE</a>
+        </div>
+        
+        <nav class="nav" id="main-nav">
+            <a href="index.html" class="nav-link">Apontamentos</a>
+            <a href="consulta-apontamentos.html" class="nav-link active">Consulta</a>
+            <a href="formularios.html" class="nav-link">Formulários</a>
+            <a href="cadastro-fazendas.html" class="nav-link">Fazendas</a>
+            <a href="cadastros-gerais.html" class="nav-link">Cadastros</a>
+            <a href="relatorios-completos.html" class="nav-link">Relatórios</a>
+            <a href="gerenciamento-usuarios.html" class="nav-link">Usuários</a>
+            <button id="logout-btn" class="btn-logout">Sair</button>
+        </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="main-content">
+
+        <header class="header">
+            <div class="container">
+                <button class="menu-toggle no-print" id="menu-toggle" aria-label="Abrir Menu">
+                    &#9776; 
+                </button>
+                
+                <h2 class="page-title" id="page-title">Consulta</h2>
+                
+                <div></div>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="container">
+                <div id="loading" class="card">
+                    <div class="spinner"></div>
+                    <p style="text-align: center;">Conectando ao banco de dados...</p>
+                </div>
+
+                <div id="content" style="display: none;">
+                    <div class="card">
+                        <h2>Consulta de Apontamentos</h2>
+                        <div id="alert-container" aria-live="polite"></div>
+                        
+                        <form id="filtro-form" class="form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="data-inicio">Data Início</label>
+                                    <input type="date" id="data-inicio">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="data-fim">Data Fim</label>
+                                    <input type="date" id="data-fim">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="turma-filtro">Turma</label>
+                                    <select id="turma-filtro">
+                                        <option value="">Todas as turmas</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="fazenda-filtro">Fazenda</label>
+                                    <select id="fazenda-filtro">
+                                        <option value="">Todas as fazendas</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">Filtrar</button>
+                                <button type="button" id="limpar-filtros" class="btn-secondary">Limpar Filtros</button>
+                                <button type="button" id="apagar-tudo-periodo" class="btn btn-danger">🗑️ Apagar Tudo no Período</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="card">
+                        <h2>Apontamentos</h2>
+                        <div id="apontamentos-list" class="table-container">
+                            </div>
+                        <div class="pagination">
+                            <button id="prev-page" class="btn btn-secondary">Anterior</button>
+                            <span id="page-info">Página 1 de 1</span>
+                            <button id="next-page" class="btn btn-secondary">Próxima</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="error-message" class="card" style="display: none; background-color: #f8d7da; color: #721c24;">
+                    <h2>Erro de Conexão</h2>
+                    <p>Não foi possível conectar ao banco de dados.</p>
+                    <button onclick="location.reload()" class="btn-primary">Tentar Novamente</button>
+                </div>
+            </div>
+        </main>
+    </div> <div id="modal-edicao" class="modal" style="display: none;">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+            <div class="modal-header">
+                <h3 id="modal-titulo">Editar Apontamento</h3>
+                <span class="close" tabindex="0" role="button" aria-label="Fechar">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="form-edicao">
+                    <input type="hidden" id="apontamento-id">
+                    
+                    <div class="form-group">
+                        <label for="editar-data-corte">Data do Corte</label>
+                        <input type="date" id="editar-data-corte" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editar-turma">Turma</label>
+                        <select id="editar-turma" required>
+                            <option value="">Selecione a turma</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editar-fazenda">Fazenda</label>
+                        <select id="editar-fazenda" required>
+                            <option value="">Selecione a fazenda</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editar-talhao">Talhão</label>
+                        <select id="editar-talhao" required>
+                            <option value="">Selecione o talhão</option>
+                        </select>
+                    </div>
+                    
+                    <div id="cortes-container">
+                        </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Salvar Alterações</button>
+                        <button type="button" id="cancelar-edicao" class="btn-secondary">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://fwkybhfzfrovjausuqgn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3a3liaGZ6ZnJvdmphdXN1cWduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MDI4OTgsImV4cCI6MjA3NDA3ODg5OH0.M7fN2ML2C4Lc1skLZx9YWyA9CUq813V6DNXP2QdTV0E';
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('Supabase inicializado para consulta de apontamentos');
+    </script>
+
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script> <script src="js/consulta-apontamentos.js"></script>
+
+</body>
+</html>

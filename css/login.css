@@ -1,0 +1,280 @@
+/* css/login.css - Layout Dividido Moderno para DB AGRO */
+:root {
+    --primary-color: #2c7744; /* Verde principal */
+    --primary-dark: #1e6035;
+    --border-color: #e0e0e0;
+    --text-color: #333;
+    --text-light: #6c757d;
+    --white: #ffffff;
+    --light-bg: #f4f7f6;
+    --error-bg: #f8d7da;
+    --error-text: #721c24;
+    --success-bg: #d4edda;
+    --success-text: #155724;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Estrutura Base --- */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: var(--light-bg);
+    overflow: hidden; /* Evita scroll na tela de login */
+}
+
+.login-container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* --- 1. Painel da Marca (Esquerda) --- */
+.branding-panel {
+    width: 45%;
+    background-color: var(--primary-dark);
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 4rem;
+    
+    /* Imagem de fundo temática de cana (sutil) */
+    /* Substitua 'caminho/para/imagem-fundo-cana.jpg' */
+    background-image: 
+        linear-gradient(rgba(30, 96, 53, 0.85), rgba(30, 96, 53, 0.85)),
+        url('caminho/para/imagem-fundo-cana.jpg');
+    background-size: cover;
+    background-position: center;
+}
+
+.branding-content {
+    margin: auto 0; /* Centraliza verticalmente */
+}
+
+.branding-panel .logo-svg {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 1.5rem;
+    stroke: var(--white);
+}
+
+.branding-panel .logo-nome {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--white);
+}
+
+.branding-panel .slogan {
+    font-size: 1.25rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.8);
+    max-width: 400px;
+    margin-top: 1rem;
+}
+
+.branding-footer {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* --- 2. Painel do Formulário (Direita) --- */
+.form-panel {
+    width: 55%;
+    background-color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.form-content {
+    width: 100%;
+    max-width: 400px;
+}
+
+.form-content h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0 0 0.5rem 0;
+}
+
+.form-subtitulo {
+    font-size: 1rem;
+    color: var(--text-light);
+    margin-bottom: 2.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: block;
+    color: var(--text-color);
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1rem;
+    background-color: var(--light-bg);
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(44, 119, 68, 0.1);
+    background-color: var(--white);
+}
+
+.form-extra {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.form-extra a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+.form-extra a:hover {
+    text-decoration: underline;
+}
+
+.form-actions {
+    border: none;
+    padding: 0;
+    margin: 0 0 1.5rem 0;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 0.9rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    background: var(--primary-color);
+    color: var(--white);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-login:hover {
+    background: var(--primary-dark);
+}
+
+.btn-login:disabled {
+    background: var(--text-light);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.form-footer {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.form-footer a {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: none;
+}
+.form-footer a:hover {
+    text-decoration: underline;
+}
+
+/* --- Alertas --- */
+.message {
+    padding: 0.8rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+}
+
+.message.error {
+    background-color: var(--error-bg);
+    color: var(--error-text);
+    border-color: var(--error-text);
+}
+
+.message.success {
+    background-color: var(--success-bg);
+    color: var(--success-text);
+    border-color: var(--success-text);
+}
+
+
+/* --- Responsividade (Mobile) --- */
+@media (max-width: 900px) {
+    .login-container {
+        flex-direction: column;
+    }
+    
+    .branding-panel {
+        width: 100%;
+        height: 250px; /* Altura fixa no mobile */
+        padding: 2rem;
+        text-align: center;
+        justify-content: center;
+        order: 1; /* Aparece primeiro */
+    }
+
+    .branding-content {
+        margin: 0; /* Remove a margem auto */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .branding-panel .logo-nome {
+        font-size: 2.5rem;
+    }
+    .branding-panel .slogan {
+        font-size: 1rem;
+    }
+    .branding-footer {
+        display: none; /* Esconde rodapé da marca no mobile */
+    }
+
+    .form-panel {
+        width: 100%;
+        height: calc(100vh - 250px); /* Ocupa o resto */
+        order: 2; /* Aparece depois */
+        padding: 2rem 1.5rem;
+    }
+    
+    .form-content {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .branding-panel {
+        height: 200px;
+        padding: 1.5rem;
+    }
+    .form-panel {
+        height: calc(100vh - 200px);
+    }
+    .form-content h2 {
+        font-size: 1.8rem;
+    }
+}

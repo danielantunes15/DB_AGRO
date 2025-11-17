@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulários para Impressão - AGRO CANA FORTE</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout.css"> <link rel="stylesheet" href="css/formularios.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2c7744">
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="index.html" class="sidebar-logo">AGRO CANA FORTE</a>
+        </div>
+        
+        <nav class="nav" id="main-nav">
+            <a href="index.html" class="nav-link">Apontamentos</a>
+            <a href="consulta-apontamentos.html" class="nav-link">Consulta</a>
+            <a href="formularios.html" class="nav-link active">Formulários</a>
+            <a href="cadastro-fazendas.html" class="nav-link">Fazendas</a>
+            <a href="cadastros-gerais.html" class="nav-link">Cadastros</a>
+            <a href="relatorios-completos.html" class="nav-link">Relatórios</a>
+            <a href="gerenciamento-usuarios.html" class="nav-link">Usuários</a>
+            <button id="logout-btn" class="btn-logout">Sair</button>
+        </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="main-content">
+
+        <header class="header no-print">
+            <div class="container">
+                <button class="menu-toggle no-print" id="menu-toggle" aria-label="Abrir Menu">
+                    &#9776; 
+                </button>
+                
+                <h2 class="page-title" id="page-title">Formulários</h2>
+                
+                <div></div>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="container">
+                <div id="alert-container" aria-live="polite" class="no-print"></div>
+                
+                <div class="card no-print">
+                    <h2>Gerar Formulário para Impressão</h2>
+                    <p>Selecione a turma ou gere um formulário em branco para preencher em campo.</p>
+                    
+                    <div class="form-group">
+                        <label for="turma-select">1. Gerar por Turma</label>
+                        <select id="turma-select" required>
+                            <option value="">Carregando turmas...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button id="gerar-preview-btn" class="btn btn-primary">Gerar Formulário da Turma</button>
+                        <button id="gerar-branco-btn" class="btn btn-secondary">Gerar Formulário em Branco</button>
+                        <button id="gerar-pdf-btn" class="btn btn-pdf" style="display: none;">📥 Gerar PDF</button>
+                        <button id="exportar-excel-btn" class="btn btn-excel" style="display: none;">📑 Exportar Excel</button>
+                    </div>
+                </div>
+
+                <div id="error-message" class="card no-print" style="display: none; background-color: #f8d7da; color: #721c24;">
+                    <h2>Ops! Algo deu errado.</h2>
+                    <p>Não foi possível carregar os dados necessários. Verifique sua conexão e tente novamente.</p>
+                </div>
+
+                <div id="preview-container" class="form-sheet-container" style="display: none;">
+                    <div class="form-sheet">
+                        <div class="form-header">
+                            <h1>AGRO CANA FORTE</h1>
+                            <h2>FORMULÁRIO DE APONTAMENTO DE PRODUÇÃO</h2>
+                        </div>
+                        <div class="form-info">
+                            <div class="info-field">
+                                <strong>FAZENDA:</strong>
+                                <span class="line"></span>
+                            </div>
+                            <div class="info-field">
+                                <strong>TALHÃO:</strong>
+                                <span class="line"></span>
+                            </div>
+                            <div class="info-field">
+                                <strong>DATA:</strong>
+                                <span class="line"></span>
+                            </div>
+                             <div class="info-field">
+                                <strong>TURMA:</strong>
+                                <span class="line" id="preview-turma"></span>
+                            </div>
+                        </div>
+
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 5%;">Cód.</th> <th style="width: 30%;">Funcionário</th> <th>Metros</th>
+                                        <th>Preço/Metro</th>
+                                        <th>Toneladas</th>
+                                        <th>Folgas</th>
+                                        <th>Valor Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="funcionarios-tbody">
+                                    </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="2"><strong>TOTAIS</strong></td> <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                         <div class="form-footer">
+                            <div class="info-field">
+                                <strong>Assinatura do Responsável:</strong>
+                                <span class="line"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div> <script>
+        const SUPABASE_URL = 'https://fwkybhfzfrovjausuqgn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3a3liaGZ6ZnJvdmphdXN1cWduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MDI4OTgsImV4cCI6MjA3NDA3ODg5OH0.M7fN2ML2C4Lc1skLZx9YWyA9CUq813V6DNXP2QdTV0E';
+        window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+    
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script> <script src="js/formularios.js"></script>
+</body>
+</html>
