@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const menuToggle = document.getElementById('menu-toggle');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
     const mainNav = document.getElementById('main-nav'); // A nav principal
+    
+    // NOVO: Elemento do link SAAS
+    const saasLinkContainer = document.getElementById('saas-link-container');
 
     function toggleSidebar() {
         document.body.classList.toggle('sidebar-open');
@@ -14,6 +17,22 @@ document.addEventListener('DOMContentLoaded', function() {
     if (sidebarOverlay) {
         sidebarOverlay.addEventListener('click', toggleSidebar);
     }
+
+    // --- NOVO: LÓGICA DE VISIBILIDADE DO PAINEL SAAS (APÓS AUTH.JS) ---
+    // Verifica a permissão e mostra o link de Gerenciamento Central
+    if (window.sistemaAuth && saasLinkContainer) {
+        // Garantimos que o perfil foi carregado (o auth.js já chamou carregarSessaoEPerfil)
+        window.sistemaAuth.carregarSessaoEPerfil().then(() => {
+            if (window.sistemaAuth.isSuperAdmin()) {
+                saasLinkContainer.style.display = 'block';
+            } else {
+                saasLinkContainer.style.display = 'none';
+            }
+        // Catch é desnecessário aqui, pois o auth.js já lida com o redirecionamento.
+        });
+    }
+    // --- FIM DA LÓGICA DE VISIBILIDADE ---
+
 
     // --- NOVO: LÓGICA PARA SUBMENUS ---
     const submenuToggles = document.querySelectorAll('.nav-link-toggle');
@@ -79,7 +98,13 @@ document.addEventListener('DOMContentLoaded', function() {
              if (activeLink) {
                  pageTitle.textContent = "Usuários";
              } else {
-                 pageTitle.textContent = "Dashboard"; // Fallback
+                 // NOVO: Adiciona a verificação para o link SAAS
+                 const saasLink = mainNav.querySelector('a.nav-link.active[href="gerenciamento-saas.html"]');
+                 if (saasLink) {
+                     pageTitle.textContent = saasLink.textContent.trim().replace('🛠️', '').trim(); // Remove o emoji
+                 } else {
+                     pageTitle.textContent = "Dashboard"; // Fallback
+                 }
              }
         }
     }
