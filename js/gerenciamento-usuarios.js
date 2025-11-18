@@ -1,113 +1,79 @@
 // js/gerenciamento-usuarios.js
+// VERSÃO CORRIGIDA PARA USAR SUPABASE AUTH (Opção 2)
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Verificar se o usuário atual é administrador
-    const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+// Funções do Modal (precisam ser globais para o HTML inline)
+const modalEditar = document.getElementById('modal-editar');
+const formEditarUsuario = document.getElementById('form-editar-usuario');
+
+function abrirModal() {
+    if(modalEditar) modalEditar.style.display = 'block';
+}
+
+window.fecharModal = function() {
+    if(modalEditar) modalEditar.style.display = 'none';
+    if(formEditarUsuario) formEditarUsuario.reset();
+}
+// Fim das Funções do Modal
+
+document.addEventListener('DOMContentLoaded', async function() {
+    // A verificação de admin já foi feita no script inline do HTML
     
-    if (!usuarioLogado || usuarioLogado.tipo !== 'admin') {
-        // Se não for administrador, não carregar a funcionalidade
-        console.log('Acesso negado: usuário não é administrador');
-        return;
-    }
-
     // Elementos do DOM
-    const logoutBtn = document.getElementById('logout-btn');
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const tabContents = document.querySelectorAll('.tab-content');
     const usuariosBody = document.getElementById('usuarios-body');
     const formNovoUsuario = document.getElementById('form-novo-usuario');
-    const modalEditar = document.getElementById('modal-editar');
-    const formEditarUsuario = document.getElementById('form-editar-usuario');
-    const fecharModalBtn = document.getElementById('fechar-modal');
-    const closeModalSpan = document.querySelector('.close');
-
-    // Event Listeners
-    if (logoutBtn) logoutBtn.addEventListener('click', logout);
     
-    // Tabs
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabId = btn.getAttribute('data-tab');
-            switchTab(tabId);
-        });
-    });
-
-    // Forms
+    // Event Listeners
     if (formNovoUsuario) formNovoUsuario.addEventListener('submit', criarUsuario);
     if (formEditarUsuario) formEditarUsuario.addEventListener('submit', salvarEdicaoUsuario);
 
-    // Modal
-    if (fecharModalBtn) fecharModalBtn.addEventListener('click', fecharModal);
-    if (closeModalSpan) closeModalSpan.addEventListener('click', fecharModal);
-    window.addEventListener('click', (e) => {
-        if (e.target === modalEditar) fecharModal();
-    });
-
     // Carregar dados iniciais
-    carregarListaUsuarios();
-
-    // Função para logout
-    function logout() {
-        localStorage.removeItem('usuarioLogado');
-        window.location.href = 'index.html';
-    }
-
-    // Função para alternar entre abas
-    function switchTab(tabId) {
-        tabBtns.forEach(btn => btn.classList.remove('active'));
-        tabContents.forEach(content => content.classList.remove('active'));
-
-        document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-        document.getElementById(tabId).classList.add('active');
-    }
-
-    // Função para carregar lista de usuários
+    await carregarListaUsuarios();
+    
+    // Função para carregar lista de usuários (lendo da tabela 'profiles')
     async function carregarListaUsuarios() {
         try {
             if (!usuariosBody) return;
             
             usuariosBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Carregando...</td></tr>';
-
-            const { data: usuarios, error } = await supabase
-                .from('sistema_usuarios')
-                .select('*')
-                .order('criado_em', { ascending: false });
-
-            if (error) {
-                console.error('Erro detalhado:', error);
-                if (error.message.includes('does not exist')) {
-                    throw new Error('Tabela sistema_usuarios não encontrada. Verifique o SQL no Supabase.');
-                }
-                throw error;
+            
+            // Pega o ID da empresa do admin logado
+            const empresaId = window.sistemaAuth.getEmpresaId();
+            if (!empresaId) {
+                 throw new Error("ID da empresa do administrador não encontrado.");
             }
+
+            // Busca todos os perfis DA MESMA EMPRESA
+            const { data: profiles, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('empresa_id', empresaId) // Filtra pela empresa do admin
+                .order('nome', { ascending: true });
+
+            if (error) throw error;
 
             usuariosBody.innerHTML = '';
 
-            if (!usuarios || usuarios.length === 0) {
+            if (!profiles || profiles.length === 0) {
                 usuariosBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhum usuário encontrado</td></tr>';
                 return;
             }
 
-            usuarios.forEach(usuario => {
+            profiles.forEach(perfil => {
                 const tr = document.createElement('tr');
                 
                 tr.innerHTML = `
-                    <td>${usuario.nome || 'N/A'}</td>
-                    <td>${usuario.username}</td>
-                    <td>${usuario.tipo === 'admin' ? 'Administrador' : 'Usuário Normal'}</td>
+                    <td>${perfil.nome || 'N/A'}</td>
+                    <td>${perfil.email || 'N/A'}</td>
+                    <td>${perfil.tipo === 'admin' ? 'Administrador' : 'Usuário Normal'}</td>
                     <td>
-                        <span class="status-badge ${usuario.ativo ? 'active' : 'inactive'}">
-                            ${usuario.ativo ? 'Ativo' : 'Inativo'}
+                        <span class="status-badge ${perfil.ativo ? 'active' : 'inactive'}">
+                            ${perfil.ativo ? 'Ativo' : 'Inativo'}
                         </span>
                     </td>
-                    <td>${new Date(usuario.criado_em).toLocaleDateString('pt-BR')}</td>
+                    <td>${new Date(perfil.created_at).toLocaleDateString('pt-BR')}</td>
                     <td>
-                        <button class="btn-edit" data-id="${usuario.id}">Editar</button>
-                        <button class="btn-toggle ${usuario.ativo ? 'btn-warning' : 'btn-success'}" 
-                            data-id="${usuario.id}" data-active="${usuario.ativo}">
-                            ${usuario.ativo ? 'Desativar' : 'Ativar'}
-                        </button>
-                        <button class="btn-danger" data-id="${usuario.id}" data-nome="${usuario.nome}">
+                        <button class="btn-edit" data-id="${perfil.id}">Editar</button>
+                        <button class="btn-danger" data-id="${perfil.id}" data-nome="${perfil.nome}">
                             Excluir
                         </button>
                     </td>
@@ -116,7 +82,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 usuariosBody.appendChild(tr);
             });
 
-            // Adicionar eventos aos botões
             adicionarEventListenersAcoes();
 
         } catch (error) {
@@ -137,15 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        document.querySelectorAll('.btn-toggle').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const userId = btn.getAttribute('data-id');
-                const currentlyActive = btn.getAttribute('data-active') === 'true';
-                toggleUsuario(userId, currentlyActive);
-            });
-        });
-
         document.querySelectorAll('.btn-danger').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -156,66 +112,48 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Função para criar novo usuário
+    // Função para criar novo usuário (CHAMANDO EDGE FUNCTION)
     async function criarUsuario(e) {
         e.preventDefault();
 
         const nome = document.getElementById('novo-nome').value.trim();
-        const username = document.getElementById('novo-username').value.trim();
+        const email = document.getElementById('novo-username').value.trim(); // Campo agora é email
         const senha = document.getElementById('nova-senha').value;
         const tipo = document.getElementById('tipo-usuario').value;
+        
+        // Pega o ID da empresa do admin logado
+        const empresaId = window.sistemaAuth.getEmpresaId();
 
-        if (!nome || !username || !senha) {
-            mostrarMensagem('Preencha todos os campos obrigatórios', 'error');
+        if (!nome || !email || !senha) {
+            mostrarMensagem('Preencha nome, email e senha.', 'error');
             return;
         }
-
         if (senha.length < 6) {
             mostrarMensagem('A senha deve ter pelo menos 6 caracteres', 'error');
             return;
         }
 
         try {
-            // Verificar se username já existe
-            const { data: existing, error: checkError } = await supabase
-                .from('sistema_usuarios')
-                .select('id')
-                .eq('username', username)
-                .maybeSingle();
-
-            if (checkError) {
-                console.error('Erro ao verificar username:', checkError);
-                throw checkError;
-            }
-
-            if (existing) {
-                mostrarMensagem('Username já está em uso', 'error');
-                return;
-            }
-
-            // Fazer hash da senha (AGORA QUE window.sistemaAuth ESTÁ CARREGADO)
-            const senhaHash = await window.sistemaAuth.hashSenha(senha);
-
-            // Criar usuário
-            const { error: insertError } = await supabase
-                .from('sistema_usuarios')
-                .insert({
+            // Chama a Edge Function 'admin-create-user'
+            const { data, error } = await supabase.functions.invoke('admin-create-user', {
+                body: {
+                    email: email,
+                    senha: senha,
                     nome: nome,
-                    username: username,
-                    senha_hash: senhaHash,
                     tipo: tipo,
-                    ativo: true,
-                    criado_em: new Date().toISOString()
-                });
+                    empresa_id: empresaId // Passa a empresa_id do admin
+                }
+            });
 
-            if (insertError) {
-                console.error('Erro ao inserir usuário:', insertError);
-                throw insertError;
-            }
+            if (error) throw error; // Erro da Edge Function
+            if (data.error) throw new Error(data.error); // Erro de lógica dentro da função
 
             mostrarMensagem('Usuário criado com sucesso!', 'success');
             formNovoUsuario.reset();
             await carregarListaUsuarios();
+            
+            // Alterna para a aba de lista (se a função existir)
+            const switchTab = window.switchTab || function() {};
             switchTab('lista-usuarios');
 
         } catch (error) {
@@ -227,24 +165,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Função para abrir modal de edição
     async function abrirModalEditar(userId) {
         try {
-            const { data: usuario, error } = await supabase
-                .from('sistema_usuarios')
+            const { data: perfil, error } = await supabase
+                .from('profiles')
                 .select('*')
                 .eq('id', userId)
                 .single();
 
             if (error) throw error;
 
-            document.getElementById('editar-id').value = usuario.id;
-            document.getElementById('editar-nome').value = usuario.nome || '';
-            document.getElementById('editar-username').value = usuario.username || '';
-            document.getElementById('editar-tipo').value = usuario.tipo;
-            document.getElementById('editar-ativo').checked = usuario.ativo;
+            document.getElementById('editar-id').value = perfil.id;
+            document.getElementById('editar-nome').value = perfil.nome || '';
+            document.getElementById('editar-username').value = perfil.email || ''; // Campo é email
+            document.getElementById('editar-username').readOnly = true; // Não pode mudar email
+            document.getElementById('editar-tipo').value = perfil.tipo;
+            document.getElementById('editar-ativo').checked = perfil.ativo;
             
-            // Limpar o campo de senha no modal, por segurança
             document.getElementById('editar-senha').value = '';
 
-            modalEditar.style.display = 'block';
+            abrirModal(); // Chama a função global
 
         } catch (error) {
             console.error('Erro ao carregar usuário para edição:', error);
@@ -252,82 +190,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Função para fechar modal
-    function fecharModal() {
-        modalEditar.style.display = 'none';
-        formEditarUsuario.reset();
-    }
-
-    // Função para salvar edição do usuário (CORRIGIDA)
+    // Função para salvar edição do usuário (CHAMANDO EDGE FUNCTION)
     async function salvarEdicaoUsuario(e) {
         e.preventDefault();
 
         const id = document.getElementById('editar-id').value;
         const nome = document.getElementById('editar-nome').value.trim();
-        const username = document.getElementById('editar-username').value.trim();
         const tipo = document.getElementById('editar-tipo').value;
         const ativo = document.getElementById('editar-ativo').checked;
-        const novaSenha = document.getElementById('editar-senha').value; // NOVO: Captura a nova senha
+        const novaSenha = document.getElementById('editar-senha').value;
 
-        if (!nome || !username) {
-            mostrarMensagem('Preencha todos os campos obrigatórios', 'error');
+        if (!nome) {
+            mostrarMensagem('O campo Nome é obrigatório.', 'error');
             return;
         }
 
-        try {
-            // Verificar se username já existe (excluindo o próprio usuário)
-            const { data: existing, error: checkError } = await supabase
-                .from('sistema_usuarios')
-                .select('id')
-                .eq('username', username)
-                .neq('id', id)
-                .maybeSingle();
+        const dadosUpdate = {
+            user_id: id,
+            nome: nome,
+            tipo: tipo,
+            ativo: ativo
+        };
 
-            if (checkError) {
-                console.error('Erro ao verificar username:', checkError);
-                throw checkError;
-            }
-
-            if (existing) {
-                mostrarMensagem('Username já está em uso', 'error');
+        // Adiciona a senha apenas se ela foi preenchida
+        if (novaSenha) {
+            if (novaSenha.length < 6) {
+                mostrarMensagem('A nova senha deve ter pelo menos 6 caracteres', 'error');
                 return;
             }
+            dadosUpdate.senha = novaSenha;
+        }
 
-            // Objeto de dados para atualização
-            const updateData = { 
-                nome: nome, 
-                username: username, 
-                tipo: tipo, 
-                ativo: ativo,
-                atualizado_em: new Date().toISOString()
-            };
-            
-            // NOVO: Tratar a atualização de senha
-            if (novaSenha) {
-                if (novaSenha.length < 6) {
-                    mostrarMensagem('A nova senha deve ter pelo menos 6 caracteres', 'error');
-                    return;
-                }
-                // Fazer hash da senha
-                const senhaHash = await window.sistemaAuth.hashSenha(novaSenha);
-                updateData.senha_hash = senhaHash;
-            }
-
-            // Atualizar usuário
-            const { error } = await supabase
-                .from('sistema_usuarios')
-                .update(updateData) // Usa o objeto com ou sem o hash da senha
-                .eq('id', id);
+        try {
+            // Chama a Edge Function 'admin-update-user'
+            const { data, error } = await supabase.functions.invoke('admin-update-user', {
+                body: dadosUpdate
+            });
 
             if (error) throw error;
-            
-            // Mensagem de sucesso personalizada se a senha foi alterada
-            if (novaSenha) {
-                mostrarMensagem('Usuário e senha atualizados com sucesso!', 'success');
-            } else {
-                mostrarMensagem('Usuário atualizado com sucesso!', 'success');
-            }
+            if (data.error) throw new Error(data.error);
 
+            mostrarMensagem('Usuário atualizado com sucesso!', 'success');
             fecharModal();
             await carregarListaUsuarios();
 
@@ -337,45 +240,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Função para ativar/desativar usuário
-    async function toggleUsuario(userId, currentlyActive) {
-        if (!confirm(`Tem certeza que deseja ${currentlyActive ? 'desativar' : 'ativar'} este usuário?`)) {
+    // Função para excluir usuário (CHAMANDO EDGE FUNCTION)
+    async function excluirUsuario(userId, userName) {
+        if (userId === window.sistemaAuth.verificarAutenticacao()?.id) {
+            mostrarMensagem('Você não pode excluir a si mesmo.', 'error');
             return;
         }
-
-        try {
-            const { error } = await supabase
-                .from('sistema_usuarios')
-                .update({ 
-                    ativo: !currentlyActive,
-                    atualizado_em: new Date().toISOString()
-                })
-                .eq('id', userId);
-
-            if (error) throw error;
-
-            mostrarMensagem(`Usuário ${currentlyActive ? 'desativado' : 'ativado'} com sucesso!`, 'success');
-            await carregarListaUsuarios();
-
-        } catch (error) {
-            console.error('Erro ao alterar status do usuário:', error);
-            mostrarMensagem('Erro ao alterar status do usuário: ' + error.message, 'error');
-        }
-    }
-
-    // Função para excluir usuário
-    async function excluirUsuario(userId, userName) {
+        
         if (!confirm(`Tem certeza que deseja EXCLUIR PERMANENTEMENTE o usuário "${userName}"? Esta ação não pode ser desfeita!`)) {
             return;
         }
 
         try {
-            const { error } = await supabase
-                .from('sistema_usuarios')
-                .delete()
-                .eq('id', userId);
-
+            // Chama a Edge Function 'admin-delete-user'
+            const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+                body: { user_id: userId }
+            });
+            
             if (error) throw error;
+            if (data.error) throw new Error(data.error);
 
             mostrarMensagem('Usuário excluído permanentemente do sistema!', 'success');
             await carregarListaUsuarios();

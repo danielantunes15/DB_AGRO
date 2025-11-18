@@ -1,263 +1,153 @@
-// js/auth.js - Sistema de autenticação customizado CORRIGIDO
+// js/auth.js - NOVO SISTEMA DE AUTENTICAÇÃO (NATIVO DO SUPABASE)
+// Este script gerencia a sessão do usuário e busca seu perfil (empresa_id, tipo)
+
 class SistemaAuth {
     constructor() {
-        this.usuarioLogado = null;
-        this.tempoSessao = 8 * 60 * 60 * 1000; // 8 horas em milissegundos
-        this.carregarUsuarioSalvo();
+        this.usuarioLogado = null; // Armazenará o usuário do Supabase (Auth)
+        this.perfilUsuario = null; // Armazenará o perfil (da tabela 'profiles')
+        this.verificacaoEmAndamento = null; // Promise para controlar a verificação inicial
     }
 
-    // Carregar usuário do localStorage com verificação de expiração
-    carregarUsuarioSalvo() {
-        try {
-            const usuarioSalvo = localStorage.getItem('usuarioLogado');
-            const timestampLogin = localStorage.getItem('loginTimestamp');
-            const manterConectado = localStorage.getItem('manterLogado') === 'true';
-
-            if (!usuarioSalvo || !timestampLogin) {
-                this.limparSessao();
-                return;
-            }
-
-            const tempoLogado = Date.now() - parseInt(timestampLogin);
-            
-            // Verificar se a sessão expirou
-            if (!manterConectado && tempoLogado > this.tempoSessao) {
-                console.log('Sessão expirada. Fazendo logout...');
-                this.fazerLogout();
-                return;
-            }
-
-            // Se manter conectado, verificar após 7 dias
-            if (manterConectado && tempoLogado > (7 * 24 * 60 * 60 * 1000)) {
-                console.log('Sessão "manter conectado" expirada (7 dias).');
-                this.fazerLogout();
-                return;
-            }
-
-            this.usuarioLogado = JSON.parse(usuarioSalvo);
-            console.log('Usuário carregado:', this.usuarioLogado.nome);
-            
-            // Atualizar timestamp para renovar sessão
-            if (!manterConectado) {
-                this.atualizarTimestamp();
-            }
-
-        } catch (error) {
-            console.error('Erro ao carregar usuário:', error);
-            this.limparSessao();
+    // 1. (NOVO) Busca a sessão e o perfil do usuário
+    async carregarSessaoEPerfil() {
+        // Se a verificação já está em andamento, aguarde ela terminar
+        if (this.verificacaoEmAndamento) {
+            return this.verificacaoEmAndamento;
         }
+
+        // Inicia uma nova verificação
+        this.verificacaoEmAndamento = new Promise(async (resolve, reject) => {
+            try {
+                // Pega a sessão do Supabase
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                if (sessionError) {
+                    throw new Error("Erro ao buscar sessão: " + sessionError.message);
+                }
+
+                // Se existe uma sessão e um usuário...
+                if (session && session.user) {
+                    this.usuarioLogado = session.user;
+
+                    // Agora, busca o perfil na tabela 'profiles' para saber a EMPRESA e o TIPO
+                    const { data: perfil, error: perfilError } = await supabase
+                        .from('profiles') // Você precisará ter esta tabela
+                        .select('nome, tipo, ativo, empresa_id') // Pedimos o ID da empresa e o tipo
+                        .eq('id', this.usuarioLogado.id) // Liga o ID do auth.users com o ID do profiles
+                        .single();
+
+                    if (perfilError) {
+                        if (perfilError.code === 'PGRST116') { // "single() returned 0 rows"
+                            throw new Error(`Usuário (id: ${this.usuarioLogado.id}) não possui perfil cadastrado na tabela 'profiles'.`);
+                        }
+                        throw new Error("Erro ao buscar perfil do usuário: " + perfilError.message);
+                    }
+                    
+                    if (!perfil.ativo) {
+                        console.warn('Usuário está logado, mas inativo. Fazendo logout.');
+                        await this.fazerLogout();
+                        resolve(null); // Resolve como nulo, pois o usuário não está ativo
+                        return;
+                    }
+
+                    // Armazena o perfil
+                    this.perfilUsuario = perfil;
+                    
+                    // Adiciona dados úteis ao objeto principal do usuário
+                    this.usuarioLogado.nome = perfil.nome || this.usuarioLogado.email; 
+                    this.usuarioLogado.tipo = perfil.tipo;
+                    this.usuarioLogado.empresa_id = perfil.empresa_id; // <-- O MAIS IMPORTANTE
+
+                    if (!this.usuarioLogado.empresa_id) {
+                         throw new Error(`Usuário ${this.usuarioLogado.nome} não está associado a nenhuma empresa (empresa_id está nulo).`);
+                    }
+
+                    console.log('Sessão ativa e perfil carregado para:', this.usuarioLogado.nome, `(Empresa: ${this.usuarioLogado.empresa_id})`);
+                    resolve(this.usuarioLogado); // Resolve a promise com o usuário
+                
+                } else {
+                    // Sem sessão, usuário deslogado
+                    this.usuarioLogado = null;
+                    this.perfilUsuario = null;
+                    resolve(null); // Resolve como nulo
+                }
+            } catch (error) {
+                console.error('Erro no carregarSessaoEPerfil:', error.message);
+                this.usuarioLogado = null;
+                this.perfilUsuario = null;
+                reject(error); // Rejeita a promise em caso de erro
+            }
+        });
+        
+        return this.verificacaoEmAndamento;
     }
 
-    // Atualizar timestamp da sessão
-    atualizarTimestamp() {
-        localStorage.setItem('loginTimestamp', Date.now().toString());
-    }
-
-    // Limpar dados da sessão
-    limparSessao() {
+    // 2. Fazer Logout
+    async fazerLogout() {
+        console.log('Fazendo logout (Supabase Auth)...');
+        const { error } = await supabase.auth.signOut();
         this.usuarioLogado = null;
-        localStorage.removeItem('usuarioLogado');
-        localStorage.removeItem('loginTimestamp');
-        // Não remove 'manterLogado' para lembrar a preferência
-    }
-
-    // Verificar se o usuário está autenticado
-    verificarAutenticacao() {
-        this.carregarUsuarioSalvo(); // Sempre verificar expiração
-        return this.usuarioLogado;
-    }
-
-    // Fazer login
-    async fazerLogin(username, senha) {
-        try {
-            // Validações básicas
-            if (!username || !senha) {
-                throw new Error('Preencha usuário e senha');
-            }
-
-            // Fazer hash da senha
-            const senhaHash = await this.hashSenha(senha);
-            
-            // Buscar usuário no banco
-            const { data: usuarios, error } = await supabase
-                .from('sistema_usuarios')
-                .select('*')
-                .eq('username', username)
-                .eq('senha_hash', senhaHash)
-                .eq('ativo', true)
-                .maybeSingle();
-
-            if (error) {
-                console.error('Erro Supabase:', error);
-                throw new Error('Erro de conexão com o banco de dados');
-            }
-
-            if (!usuarios) {
-                throw new Error('Usuário ou senha incorretos');
-            }
-
-            // Salvar usuário logado (sem a senha)
-            this.usuarioLogado = {
-                id: usuarios.id,
-                nome: usuarios.nome,
-                username: usuarios.username,
-                tipo: usuarios.tipo,
-                ativo: usuarios.ativo
-            };
-
-            // Salvar no localStorage
-            localStorage.setItem('usuarioLogado', JSON.stringify(this.usuarioLogado));
-            localStorage.setItem('loginTimestamp', Date.now().toString());
-            
-            console.log('Login realizado com sucesso:', this.usuarioLogado.nome);
-            
-            return { success: true, usuario: this.usuarioLogado };
-
-        } catch (error) {
-            console.error('Erro no login:', error);
-            return { success: false, error: error.message };
-        }
-    }
-
-    // Fazer logout
-    fazerLogout() {
-        console.log('Fazendo logout do usuário:', this.usuarioLogado?.nome);
-        this.limparSessao();
+        this.perfilUsuario = null;
+        this.verificacaoEmAndamento = null; // Reseta a promise de verificação
+        if (error) console.error('Erro ao sair:', error.message);
         window.location.href = 'login.html';
     }
 
-    // Forçar verificação de autenticação (usar nas páginas)
-    requerAutenticacao() {
-        const usuario = this.verificarAutenticacao();
-        
-        if (!usuario) {
-            console.log('Acesso negado: usuário não autenticado');
-            // Delay para evitar loop de redirecionamento
-            setTimeout(() => {
-                if (!window.location.pathname.includes('login.html')) {
+    // 3. Verifica se a página requer autenticação
+    async requerAutenticacao() {
+        try {
+            const usuario = await this.carregarSessaoEPerfil();
+
+            if (!usuario) {
+                console.log('Acesso negado: usuário não autenticado. Redirecionando para login.');
+                if (!window.location.pathname.endsWith('login.html')) {
                     window.location.href = 'login.html';
                 }
-            }, 100);
-            return false;
-        }
-        
-        return true;
-    }
-
-    // Verificar se usuário é admin
-    isAdmin() {
-        return this.usuarioLogado && this.usuarioLogado.tipo === 'admin';
-    }
-
-    // Redirecionar se não for admin
-    requerAdmin() {
-        if (!this.requerAutenticacao()) return false;
-        
-        if (!this.isAdmin()) {
-            console.log('Acesso negado: permissão de administrador requerida');
-            alert('Acesso restrito a administradores');
-            window.location.href = 'index.html';
-            return false;
-        }
-        
-        return true;
-    }
-
-    // Função de hash da senha
-    async hashSenha(senha) {
-        try {
-            // Usando Web Crypto API para hash seguro
-            const encoder = new TextEncoder();
-            const data = encoder.encode(senha + 'agrocana_salt_2024');
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            return hashHex;
+                return false;
+            }
+            return true;
         } catch (error) {
-            console.error('Erro ao gerar hash:', error);
-            // Fallback simples se crypto não estiver disponível
-            return btoa(senha);
+            // Se houver erro na verificação (ex: perfil não encontrado), desloga
+            console.error('Falha na autenticação, redirecionando para login:', error.message);
+            await this.fazerLogout();
+            return false;
         }
     }
 
-    // Verificar se a sessão está próxima de expirar (para avisos)
-    sessaoProximaExpirar() {
-        const timestampLogin = localStorage.getItem('loginTimestamp');
-        const manterConectado = localStorage.getItem('manterLogado') === 'true';
-        
-        if (!timestampLogin || manterConectado) return false;
-        
-        const tempoLogado = Date.now() - parseInt(timestampLogin);
-        const tempoRestante = this.tempoSessao - tempoLogado;
-        
-        // Retornar true se faltar menos de 5 minutos
-        return tempoRestante < (5 * 60 * 1000);
+    // 4. Verifica se o usuário é admin
+    isAdmin() {
+        // Esta função só deve ser chamada DEPOIS que 'requerAutenticacao' foi resolvida
+        return this.perfilUsuario && this.perfilUsuario.tipo === 'admin';
+    }
+    
+    // 5. Retorna o usuário logado (sincronamente)
+    verificarAutenticacao() {
+        // Usado por scripts como 'main.js' para pegar o ID do usuário
+        return this.usuarioLogado;
     }
 
-    // Renovar sessão (usar quando usuário fizer alguma ação)
-    renovarSessao() {
-        if (this.usuarioLogado) {
-            this.atualizarTimestamp();
-            console.log('Sessão renovada para:', this.usuarioLogado.nome);
-        }
-    }
-
-    // Obter informações da sessão
-    getInfoSessao() {
-        const timestampLogin = localStorage.getItem('loginTimestamp');
-        const manterConectado = localStorage.getItem('manterLogado') === 'true';
-        
-        if (!timestampLogin) return null;
-        
-        const loginTime = new Date(parseInt(timestampLogin));
-        const tempoLogado = Date.now() - parseInt(timestampLogin);
-        const tempoRestante = this.tempoSessao - tempoLogado;
-        
-        return {
-            usuario: this.usuarioLogado,
-            loginTime: loginTime,
-            tempoLogado: tempoLogado,
-            tempoRestante: tempoRestante,
-            manterConectado: manterConectado,
-            expirada: tempoRestante <= 0
-        };
+    // 6. Retorna o ID da empresa do usuário logado
+    getEmpresaId() {
+        return this.usuarioLogado ? this.usuarioLogado.empresa_id : null;
     }
 }
 
-// Instância global do sistema de autenticação
+// Instância global
 window.sistemaAuth = new SistemaAuth();
 
 // Verificação automática em todas as páginas (exceto login)
 document.addEventListener('DOMContentLoaded', function() {
-    // Não verificar na página de login
     if (window.location.pathname.includes('login.html')) {
-        // Se já estiver logado e acessar login, redirecionar para index
-        if (window.sistemaAuth.verificarAutenticacao()) {
-            setTimeout(() => {
+        // Se já estiver logado (sessão ativa) e acessar login, redirecionar
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
                 window.location.href = 'index.html';
-            }, 1000);
-        }
+            }
+        });
         return;
     }
     
     // Verificar autenticação em todas as outras páginas
-    console.log('Verificando autenticação...');
+    // Esta chamada agora é a "porta de entrada" que carrega o perfil
     window.sistemaAuth.requerAutenticacao();
 });
-
-// Renovar sessão em interações do usuário
-document.addEventListener('click', function() {
-    if (window.sistemaAuth && window.sistemaAuth.verificarAutenticacao()) {
-        window.sistemaAuth.renovarSessao();
-    }
-});
-
-// Verificar expiração periodicamente (a cada minuto)
-setInterval(() => {
-    if (window.sistemaAuth && window.sistemaAuth.verificarAutenticacao()) {
-        if (window.sistemaAuth.sessaoProximaExpirar()) {
-            console.warn('Sessão próxima de expirar');
-            // Pode mostrar um aviso para o usuário aqui
-        }
-    }
-}, 60000); // 1 minuto

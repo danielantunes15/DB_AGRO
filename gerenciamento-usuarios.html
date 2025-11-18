@@ -1,166 +1,4 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciamento de Usuários - AGRO CANA FORTE</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/layout.css"> <link rel="stylesheet" href="css/usuarios.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#2c7744">
-</head>
-<body>
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <a href="index.html" class="sidebar-logo">AGRO CANA FORTE</a>
-        </div>
-        
-        <nav class="nav" id="main-nav">
-            <a href="index.html" class="nav-link">Apontamentos</a>
-            <a href="consulta-apontamentos.html" class="nav-link">Consulta</a>
-            <a href="formularios.html" class="nav-link">Formulários</a>
-            <a href="cadastro-fazendas.html" class="nav-link">Fazendas</a>
-            <a href="cadastros-gerais.html" class="nav-link">Cadastros</a>
-            <a href="relatorios-completos.html" class="nav-link">Relatórios</a>
-            <a href="gerenciamento-usuarios.html" class="nav-link active">Usuários</a>
-            <button id="logout-btn" class="btn-logout">Sair</button>
-        </nav>
-    </aside>
-
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
-
-    <div class="main-content">
-
-        <header class="header">
-            <div class="container">
-                <button class="menu-toggle no-print" id="menu-toggle" aria-label="Abrir Menu">
-                    &#9776; 
-                </button>
-                
-                <h2 class="page-title" id="page-title">Usuários</h2>
-                
-                <div></div>
-            </div>
-        </header>
-
-        <main class="main">
-            <div class="container">
-                <div id="alert-container"></div>
-                
-                <div id="admin-content" style="display: none;">
-                    <div class="card">
-                        <h2>Gerenciamento de Usuários</h2>
-
-                        <div class="tabs">
-                            <button class="tab-btn active" data-tab="lista-usuarios">Lista de Usuários</button>
-                            <button class="tab-btn" data-tab="novo-usuario">Novo Usuário</button>
-                        </div>
-
-                        <div id="lista-usuarios" class="tab-content active">
-                            <div class="table-container">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Nome</th>
-                                            <th>Usuário</th>
-                                            <th>Tipo</th>
-                                            <th>Status</th>
-                                            <th>Criado em</th>
-                                            <th>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="usuarios-body">
-                                        <tr>
-                                            <td colspan="6" style="text-align: center;">Carregando usuários...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div id="novo-usuario" class="tab-content">
-                            <form id="form-novo-usuario" class="form">
-                                <div class="form-group">
-                                    <label for="novo-nome">Nome Completo *</label>
-                                    <input id="novo-nome" type="text" required />
-                                </div>
-                                <div class="form-group">
-                                    <label for="novo-username">Usuário (login) *</label>
-                                    <input id="novo-username" type="text" required />
-                                </div>
-                                <div class="form-group">
-                                    <label for="nova-senha">Senha (mínimo 6 caracteres) *</label>
-                                    <input id="nova-senha" type="password" minlength="6" required />
-                                </div>
-                                <div class="form-group">
-                                    <label for="tipo-usuario">Tipo de Usuário *</label>
-                                    <select id="tipo-usuario" required>
-                                        <option value="user">Usuário Normal</option>
-                                        <option value="admin">Administrador</option>
-                                    </select>
-                                </div>
-                                <div class="form-actions">
-                                    <button class="btn btn-primary" type="submit">Criar Usuário</button>
-                                    <button class="btn btn-secondary" type="reset">Limpar</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="access-denied-message" style="display: none;">
-                    <div class="card access-denied">
-                        <h2>❌ Acesso Negado</h2>
-                        <p>Você não possui permissão para acessar esta página.</p>
-                        <p>Apenas usuários administradores podem gerenciar usuários do sistema.</p>
-                        <a href="index.html" class="btn btn-primary">Voltar para a Página Inicial</a>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div> <div id="modal-editar" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h3>Editar Usuário</h3>
-            <form id="form-editar-usuario">
-                <input type="hidden" id="editar-id" />
-                <div class="form-group">
-                    <label for="editar-nome">Nome Completo *</label>
-                    <input id="editar-nome" type="text" required />
-                </div>
-                <div class="form-group">
-                    <label for="editar-username">Usuário (login) *</label>
-                    <input id="editar-username" type="text" required />
-                </div>
-                <div class="form-group">
-                    <label for="editar-senha">Nova Senha (mínimo 6 caracteres - deixe em branco para não alterar)</label>
-                    <input id="editar-senha" type="password" minlength="6" />
-                </div>
-                <div class="form-group">
-                    <label for="editar-tipo">Tipo de Usuário *</label>
-                    <select id="editar-tipo" required>
-                        <option value="user">Usuário Normal</option>
-                        <option value="admin">Administrador</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="editar-ativo" />
-                        Usuário Ativo
-                    </label>
-                </div>
-                <div class="form-actions">
-                    <button class="btn btn-primary" type="submit">Salvar Alterações</button>
-                    <button class="btn btn-secondary" type="button" id="fechar-modal">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script src="js/config.js"></script>
 
@@ -169,15 +7,23 @@
     <script src="js/layout.js"></script> <script src="js/gerenciamento-usuarios.js"></script>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             
-            // 1. Verificar permissão de admin (usando o sistemaAuth)
-            // js/auth.js já foi carregado e define window.sistemaAuth
             const adminContent = document.getElementById('admin-content');
             const accessDeniedMessage = document.getElementById('access-denied-message');
 
-            // Verifica se o sistema de autenticação existe E se o usuário é admin
-            if (window.sistemaAuth && window.sistemaAuth.isAdmin()) {
+            // 1. (NOVO) Aguarda a autenticação e o carregamento do perfil
+            // A função 'requerAutenticacao' agora é a principal e é assíncrona
+            try {
+                await window.sistemaAuth.requerAutenticacao();
+            } catch (error) {
+                // Se falhar (ex: perfil não existe), o 'requerAutenticacao' já redirecionou
+                return; 
+            }
+            
+            // 2. (NOVO) Agora, verifica se é admin (de forma síncrona)
+            // 'isAdmin()' só funciona DEPOIS que 'requerAutenticacao' terminou
+            if (window.sistemaAuth.isAdmin()) {
                 adminContent.style.display = 'block';
                 accessDeniedMessage.style.display = 'none';
             } else {
@@ -185,7 +31,7 @@
                 accessDeniedMessage.style.display = 'block';
             }
 
-            // 2. Funcionalidade das abas
+            // 3. Funcionalidade das abas
             const tabBtns = document.querySelectorAll('.tab-btn');
             const tabContents = document.querySelectorAll('.tab-content');
 
@@ -201,25 +47,18 @@
                 });
             });
 
-            // 3. Funcionalidade do modal
+            // 4. Funcionalidade do modal
             const modal = document.getElementById('modal-editar');
             const closeBtn = document.querySelector('.close');
             const fecharModalBtn = document.getElementById('fechar-modal');
 
-            function openModal() {
-                modal.style.display = 'block';
-            }
-
-            function closeModal() {
-                modal.style.display = 'none';
-            }
-
-            if (closeBtn) closeBtn.addEventListener('click', closeModal);
-            if (fecharModalBtn) fecharModalBtn.addEventListener('click', closeModal);
+            // (As funções openModal e closeModal são definidas no js/gerenciamento-usuarios.js)
+            if (closeBtn) closeBtn.addEventListener('click', () => window.fecharModal());
+            if (fecharModalBtn) fecharModalBtn.addEventListener('click', () => window.fecharModal());
 
             window.addEventListener('click', function(event) {
                 if (event.target === modal) {
-                    closeModal();
+                    window.fecharModal();
                 }
             });
         });

@@ -1,19 +1,27 @@
 // js/gerenciamento-logs.js
-// VERSÃO CORRIGIDA PARA USAR O SISTEMA DE AUTH CUSTOMIZADO (window.sistemaAuth)
+// VERSÃO CORRIGIDA PARA USAR O NOVO SISTEMA DE AUTH (Supabase Auth)
 
 document.addEventListener('DOMContentLoaded', async function() {
     
-    // Verificar autenticação e permissões (USANDO O SISTEMA CUSTOMIZADO)
-    if (!window.sistemaAuth || !window.sistemaAuth.requerAdmin()) {
-        console.warn('Acesso negado à página de logs.');
-        // O requerAdmin() já deve ter redirecionado, mas garantimos
-        // Escondendo o conteúdo caso o redirecionamento falhe
-        document.body.innerHTML = '<p>Acesso negado. Você precisa ser administrador.</p><a href="index.html">Voltar</a>';
-        return;
+    // 1. (NOVO) Aguarda a autenticação e o carregamento do perfil
+    try {
+        await window.sistemaAuth.requerAutenticacao();
+    } catch (error) {
+        // Se falhar (ex: perfil não existe), o 'requerAutenticacao' já redirecionou
+        return; 
     }
 
+    // 2. (NOVO) Agora, verifica se é admin (de forma síncrona)
+    if (!window.sistemaAuth.isAdmin()) {
+        console.warn('Acesso negado à página de logs.');
+        document.body.innerHTML = '<div class="card" style="padding: 2rem; background-color: #f8d7da; color: #721c24;"><h2>Acesso Negado</h2><p>Você precisa ser administrador para ver esta página.</p><a href="index.html" class="btn btn-primary">Voltar</a></div>';
+        return;
+    }
+    
+    // Se chegou aqui, é admin.
+
     // Elementos do DOM
-    const logoutBtn = document.getElementById('logout-btn');
+    const logoutBtn = document.getElementById('logout-btn'); // 'logout-btn' é global do layout
     const logsBody = document.getElementById('logs-body');
     const filterUser = document.getElementById('filter-user');
     const filterAction = document.getElementById('filter-action');
@@ -31,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     let currentFilters = {};
 
     // Event Listeners
-    if (logoutBtn) logoutBtn.addEventListener('click', logout); // O logout agora é o do auth.js
+    // O logout-btn é tratado pelo layout.js
     applyFiltersBtn.addEventListener('click', aplicarFiltros);
     resetFiltersBtn.addEventListener('click', resetarFiltros);
     prevPageBtn.addEventListener('click', () => mudarPagina(-1));
@@ -41,18 +49,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     await carregarUsuariosFiltro();
     await carregarLogs();
 
-    // Função para logout (usa o sistemaAuth)
-    function logout() {
-        window.sistemaAuth.fazerLogout();
-    }
-
     // Função para carregar usuários no filtro
     async function carregarUsuariosFiltro() {
         try {
-            // Busca da sua tabela 'sistema_usuarios'
+            // Busca da tabela 'profiles'
             const { data: usuarios, error } = await supabase
-                .from('sistema_usuarios')
-                .select('username, nome')
+                .from('profiles')
+                .select('id, nome, email') // Usamos 'email' como username
                 .order('nome');
 
             if (error) throw error;
@@ -60,8 +63,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             filterUser.innerHTML = '<option value="">Todos os usuários</option>';
             usuarios.forEach(usuario => {
                 const option = document.createElement('option');
-                option.value = usuario.username;
-                option.textContent = `${usuario.nome} (${usuario.username})`;
+                option.value = usuario.email; // Filtra pelo email
+                option.textContent = `${usuario.nome} (${usuario.email})`;
                 filterUser.appendChild(option);
             });
 
@@ -73,30 +76,33 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Função para carregar logs
     async function carregarLogs() {
         try {
-            // (Esta tabela 'access_logs' não existe nos seus arquivos, 
-            // mas assumindo que exista no seu novo banco)
+            // Tabela de logs do Supabase: 'audit.logs'
+            // Precisamos de uma view ou RPC para acessá-la, pois RLS não se aplica facilmente
+            // Vamos assumir que você criou uma VIEW chamada 'logs_de_acesso'
+            
             let query = supabase
-                .from('access_logs') // ATENÇÃO: Verifique se o nome desta tabela está correto no seu banco
+                .from('logs_de_acesso') // ATENÇÃO: Você precisará criar esta VIEW no Supabase
                 .select('*', { count: 'exact' })
-                .order('created_at', { ascending: false });
+                .order('timestamp', { ascending: false });
 
             // Aplicar filtros
             if (currentFilters.user) {
-                query = query.eq('username', currentFilters.user);
+                // A view deve expor o email ou username
+                query = query.eq('user_email', currentFilters.user); 
             }
             if (currentFilters.action) {
-                query = query.eq('action', currentFilters.action);
+                query = query.ilike('action_name', `%${currentFilters.action}%`); // ex: 'login'
             }
             if (currentFilters.date) {
                 const startDate = new Date(currentFilters.date);
                 const endDate = new Date(startDate);
                 endDate.setDate(endDate.getDate() + 1);
                 
-                query = query.gte('created_at', startDate.toISOString())
-                            .lt('created_at', endDate.toISOString());
+                query = query.gte('timestamp', startDate.toISOString())
+                            .lt('timestamp', endDate.toISOString());
             }
             if (currentFilters.success !== undefined && currentFilters.success !== "") {
-                query = query.eq('success', currentFilters.success === 'true');
+                // 'success' pode não estar disponível, depende da view
             }
 
             // Paginação
@@ -112,7 +118,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         } catch (error) {
             console.error('Erro ao carregar logs:', error);
-            mostrarMensagem('Erro ao carregar logs de acesso. Verifique se a tabela "access_logs" existe.', 'error');
+            mostrarMensagem('Erro ao carregar logs de acesso. Verifique se a VIEW "logs_de_acesso" existe e tem permissão de SELECT.', 'error');
         }
     }
 
@@ -128,14 +134,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         logs.forEach(log => {
             const tr = document.createElement('tr');
             
-            const dataHora = new Date(log.created_at).toLocaleString('pt-BR');
-            const statusText = log.success ? 'Sucesso' : 'Falha';
-            const statusClass = log.success ? 'status-success' : 'status-error';
+            const dataHora = new Date(log.timestamp).toLocaleString('pt-BR');
+            // 'success' não existe por padrão, então assumimos sucesso
+            const statusText = 'Sucesso'; 
+            const statusClass = 'status-success';
             
             tr.innerHTML = `
                 <td>${dataHora}</td>
-                <td>${log.username}</td>
-                <td>${traduzirAcao(log.action)}</td>
+                <td>${log.user_email || 'Sistema'}</td>
+                <td>${log.action_name || 'N/A'}</td>
                 <td>${log.ip_address || 'N/A'}</td>
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                 <td>${log.error_message || '-'}</td>
@@ -145,35 +152,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
-    // Função para traduzir ações
-    function traduzirAcao(acao) {
-        const traducoes = {
-            'login': 'Login',
-            'logout': 'Logout',
-            'password_change': 'Alteração de Senha',
-            'user_created': 'Usuário Criado',
-            'user_updated': 'Usuário Atualizado'
-        };
-        
-        return traducoes[acao] || acao;
-    }
-
-    // Função para atualizar paginação
     function atualizarPaginacao(totalItens) {
         const totalPages = Math.ceil(totalItens / itemsPerPage);
         
-        pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+        pageInfo.textContent = `Página ${currentPage} de ${totalPages || 1}`;
         prevPageBtn.disabled = currentPage === 1;
         nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
     }
 
-    // Função para mudar página
     function mudarPagina(direction) {
         currentPage += direction;
         carregarLogs();
     }
 
-    // Função para aplicar filtros
     function aplicarFiltros() {
         currentFilters = {
             user: filterUser.value,
@@ -186,7 +177,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         carregarLogs();
     }
 
-    // Função para resetar filtros
     function resetarFiltros() {
         filterUser.value = '';
         filterAction.value = '';
