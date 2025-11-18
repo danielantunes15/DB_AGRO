@@ -14,7 +14,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     const chamadosListContainer = document.getElementById('chamados-list-container');
     
     // Checagem defensiva para inicialização dos clientes Supabase
-    if (!window.supabase) {
+    // CORREÇÃO: Verifica o window.dbAgroClient (definido em config.js)
+    if (!window.dbAgroClient) {
          mostrarMensagem('Erro: O cliente principal do DB AGRO não está carregado. Verifique a configuração.', 'error');
          loadingElement.style.display = 'none';
          return;
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     const DB_SISTEMAS_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkbWh4dGF0dXBmcmt3Ynl1c3VwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwNDAzNDgsImV4cCI6MjA3ODYxNjM0OH0.t_2-hT-TtZI1PeGZDHoe-ApWYOT5eCFF2ki8CQa7f9k';
     
     // Inicializa o cliente Supabase SECUNDÁRIO
+    // CORREÇÃO: Usa o 'supabase' global da CDN, que não foi sobrescrito
     const sbDbSistemas = supabase.createClient(DB_SISTEMAS_URL, DB_SISTEMAS_KEY);
 
 
@@ -62,8 +64,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     async function loadEmpresas() {
         try {
-            // Busca todas as empresas (RLS do SuperAdmin deve permitir isso)
-            const { data, error, count } = await supabase
+            // Busca todas as empresas (Usa o cliente dbAgroClient)
+            // CORREÇÃO: Trocado 'supabase' por 'window.dbAgroClient'
+            const { data, error, count } = await window.dbAgroClient
                 .from('empresas') // Assumindo uma nova tabela 'empresas' para o SaaS
                 .select(`
                     *,
@@ -119,8 +122,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
         try {
-            // Chamando a Edge Function que cria a Empresa e o Admin (Requer que a função exista no Supabase)
-            const { data, error } = await supabase.functions.invoke('saas-create-company', {
+            // Chamando a Edge Function (Usa o cliente dbAgroClient)
+            // CORREÇÃO: Trocado 'supabase' por 'window.dbAgroClient'
+            const { data, error } = await window.dbAgroClient.functions.invoke('saas-create-company', {
                 body: {
                     nomeEmpresa: nomeEmpresa,
                     emailAdmin: emailAdmin,
@@ -147,8 +151,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (!confirm(`Tem certeza que deseja ${acao} a empresa ${empresaId.substring(0, 8)}...?`)) return;
 
         try {
-            // Requer que o SuperAdmin tenha permissão de UPDATE
-            const { error } = await supabase
+            // Requer que o SuperAdmin tenha permissão de UPDATE (Usa o cliente dbAgroClient)
+            // CORREÇÃO: Trocado 'supabase' por 'window.dbAgroClient'
+            const { error } = await window.dbAgroClient
                 .from('empresas')
                 .update({ ativo: novoStatus })
                 .eq('id', empresaId);
@@ -168,8 +173,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (!confirm(`⚠️ AVISO CRÍTICO: Tem certeza que deseja EXCLUIR PERMANENTEMENTE a empresa "${nomeEmpresa}"? Esta ação é IRREVERSÍVEL e DELETARÁ TODOS OS DADOS DA EMPRESA!`)) return;
         
         try {
-            // Chamando Edge Function para exclusão em cascata (REQUER IMPLEMENTAÇÃO NO SUPABASE)
-             const { data, error } = await supabase.functions.invoke('saas-delete-company', {
+            // Chamando Edge Function para exclusão em cascata (Usa o cliente dbAgroClient)
+            // CORREÇÃO: Trocado 'supabase' por 'window.dbAgroClient'
+             const { data, error } = await window.dbAgroClient.functions.invoke('saas-delete-company', {
                 body: { empresa_id: empresaId }
             });
 
@@ -191,7 +197,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (!sbDbSistemas) return; // Checagem defensiva
 
         try {
-            // Busca Faturas e Sites de TODOS os clientes (Removendo o filtro user_id do db-faturas.js)
+            // Busca Faturas e Sites de TODOS os clientes (Usa o cliente sbDbSistemas)
             const { data: sites, error } = await sbDbSistemas
                 .from('sites')
                 .select(`
@@ -295,7 +301,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (!sbDbSistemas) return; // Checagem defensiva
         
         try {
-            // Busca Chamados de TODOS os clientes (Removendo o filtro user_id do db-central-ajuda.js)
+            // Busca Chamados de TODOS os clientes (Usa o cliente sbDbSistemas)
             const { data: chamados, error } = await sbDbSistemas
                 .from('chamados')
                 .select(`*, sites ( name )`)
