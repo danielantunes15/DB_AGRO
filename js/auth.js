@@ -1,12 +1,6 @@
 // js/auth.js - NOVO SISTEMA DE AUTENTICAÇÃO (NATIVO DO SUPABASE)
 // Este script gerencia a sessão do usuário e busca seu perfil (empresa_id, tipo)
 
-// Checagem de segurança (NOVO)
-if (!window.supabase) {
-    console.error("ERRO CRÍTICO: Cliente Supabase não está carregado. Verifique js/config.js e a ordem de scripts.");
-}
-
-
 class SistemaAuth {
     constructor() {
         this.usuarioLogado = null; // Armazenará o usuário do Supabase (Auth)
@@ -16,9 +10,9 @@ class SistemaAuth {
 
     // 1. (NOVO) Busca a sessão e o perfil do usuário
     async carregarSessaoEPerfil() {
-        // Checagem defensiva (EVITA O ERRO 'getSession' undefined)
+        // Checagem defensiva: GARANTE QUE O SUPABASE FOI CARREGADO
         if (!window.supabase) {
-             throw new Error("Cliente Supabase não inicializado.");
+             throw new Error("Cliente Supabase não inicializado. Verifique js/config.js.");
         }
         
         // Se a verificação já está em andamento, aguarde ela terminar
@@ -29,8 +23,8 @@ class SistemaAuth {
         // Inicia uma nova verificação
         this.verificacaoEmAndamento = new Promise(async (resolve, reject) => {
             try {
-                // Pega a sessão do Supabase
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                // Pega a sessão do Supabase (USANDO window.supabase)
+                const { data: { session }, error: sessionError } = await window.supabase.auth.getSession();
 
                 if (sessionError) {
                     throw new Error("Erro ao buscar sessão: " + sessionError.message);
@@ -40,8 +34,8 @@ class SistemaAuth {
                 if (session && session.user) {
                     this.usuarioLogado = session.user;
 
-                    // Agora, busca o perfil na tabela 'profiles' para saber a EMPRESA e o TIPO
-                    const { data: perfil, error: perfilError } = await supabase
+                    // Agora, busca o perfil na tabela 'profiles' (USANDO window.supabase)
+                    const { data: perfil, error: perfilError } = await window.supabase
                         .from('profiles') // Você precisará ter esta tabela
                         .select('nome, tipo, ativo, empresa_id') // Pedimos o ID da empresa e o tipo
                         .eq('id', this.usuarioLogado.id) // Liga o ID do auth.users com o ID do profiles
@@ -100,11 +94,11 @@ class SistemaAuth {
     // 2. Fazer Logout
     async fazerLogout() {
         console.log('Fazendo logout (Supabase Auth)...');
-        // Checagem defensiva (EVITA O ERRO 'signOut' undefined)
+        // Checagem defensiva e uso de window.supabase
         if (window.supabase) {
-            await supabase.auth.signOut();
+            const { error } = await window.supabase.auth.signOut();
+            if (error) console.error('Erro ao sair:', error.message);
         }
-        
         this.usuarioLogado = null;
         this.perfilUsuario = null;
         this.verificacaoEmAndamento = null; // Reseta a promise de verificação
@@ -161,26 +155,29 @@ window.sistemaAuth = new SistemaAuth();
 
 // Verificação automática em todas as páginas (exceto login)
 document.addEventListener('DOMContentLoaded', function() {
+    // Checagem defensiva: Se window.supabase não existe, paramos aqui
+    if (!window.supabase) {
+        console.error("Autenticação não pode iniciar. Cliente Supabase ausente.");
+        return;
+    }
+
     if (window.location.pathname.includes('login.html')) {
         // Se já estiver logado (sessão ativa) e acessar login, redirecionar
-        // Checagem defensiva para evitar erro se Supabase não carregou aqui também
-        if (window.supabase) { 
-            supabase.auth.getSession().then(({ data: { session } }) => {
-                if (session) {
-                    // Tenta carregar o perfil para decidir o redirecionamento
-                    window.sistemaAuth.carregarSessaoEPerfil().then(() => {
-                         if (window.sistemaAuth.isSuperAdmin()) {
-                            window.location.href = 'gerenciamento-saas.html';
-                        } else {
-                            window.location.href = 'index.html';
-                        }
-                    }).catch(error => {
-                        console.error('Erro ao verificar perfil no login:', error);
-                        // Se falhar, deixa o user tentar logar de novo
-                    });
-                }
-            });
-        }
+        window.supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                // Tenta carregar o perfil para decidir o redirecionamento
+                window.sistemaAuth.carregarSessaoEPerfil().then(() => {
+                    if (window.sistemaAuth.isSuperAdmin()) {
+                        window.location.href = 'gerenciamento-saas.html';
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                }).catch(error => {
+                    console.error('Erro ao verificar perfil no login:', error);
+                    // Se falhar (ex: perfil deletado), o auth.js irá lidar com isso no próximo carregamento
+                });
+            }
+        });
         return;
     }
     
