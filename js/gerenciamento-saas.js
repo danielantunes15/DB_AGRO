@@ -13,10 +13,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     const faturasListContainer = document.getElementById('faturas-list-container');
     const chamadosListContainer = document.getElementById('chamados-list-container');
     
+    // Checagem defensiva para inicialização dos clientes Supabase
+    if (!window.supabase) {
+         mostrarMensagem('Erro: O cliente principal do DB AGRO não está carregado. Verifique a configuração.', 'error');
+         loadingElement.style.display = 'none';
+         return;
+    }
+    
     // Chaves do DB Sistemas (para faturas e chamados)
-    // USAR CHAVES FIXAS JÁ DEFINIDAS EM db-faturas.js e db-central-ajuda.js
     const DB_SISTEMAS_URL = 'https://hdmhxtatupfrkwbyusup.supabase.co'; 
     const DB_SISTEMAS_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkbWh4dGF0dXBmcmt3Ynl1c3VwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwNDAzNDgsImV4cCI6MjA3ODYxNjM0OH0.t_2-hT-TtZI1PeGZDHoe-ApWYOT5eCFF2ki8CQa7f9k';
+    
+    // Inicializa o cliente Supabase SECUNDÁRIO
     const sbDbSistemas = supabase.createClient(DB_SISTEMAS_URL, DB_SISTEMAS_KEY);
 
 
@@ -180,6 +188,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // --- Funções de Faturas (DB Sistemas) ---
 
     async function loadFaturasGlobais() {
+        if (!sbDbSistemas) return; // Checagem defensiva
+
         try {
             // Busca Faturas e Sites de TODOS os clientes (Removendo o filtro user_id do db-faturas.js)
             const { data: sites, error } = await sbDbSistemas
@@ -282,6 +292,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // --- Funções de Chamados (DB Sistemas) ---
 
     async function loadChamadosGlobais() {
+        if (!sbDbSistemas) return; // Checagem defensiva
+        
         try {
             // Busca Chamados de TODOS os clientes (Removendo o filtro user_id do db-central-ajuda.js)
             const { data: chamados, error } = await sbDbSistemas
