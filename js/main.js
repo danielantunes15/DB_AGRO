@@ -1,7 +1,6 @@
-// js/main.js - VERSÃO CORRIGIDA - (Verificação de auth REMOVIDA do topo)
+// js/main.js - VERSÃO MULTI-EMPRESA (Opção 2)
 document.addEventListener('DOMContentLoaded', async function() {
-    // A verificação de autenticação FOI REMOVIDA DAQUI
-    // Ela agora é feita globalmente pelo novo js/auth.js
+    // A verificação de autenticação é feita pelo js/auth.js
 
     // Elementos do DOM
     const loadingElement = document.getElementById('loading');
@@ -9,37 +8,33 @@ document.addEventListener('DOMContentLoaded', async function() {
     const errorElement = document.getElementById('error-message');
 
     try {
-        // Mostrar loading
         if (loadingElement) loadingElement.style.display = 'block';
         if (contentElement) contentElement.style.display = 'none';
         if (errorElement) errorElement.style.display = 'none';
 
-        console.log('Iniciando conexão com Supabase...');
-
-        // Testar conexão com Supabase
-        await testarConexaoSupabase();
+        // O 'requerAutenticacao' do auth.js já está rodando
+        // Esperamos ele garantir que o perfil (com empresa_id) está carregado
+        await window.sistemaAuth.carregarSessaoEPerfil();
         
-        // Esconder loading e mostrar conteúdo
+        // Se chegou aqui, estamos logados e temos o empresa_id
+        
+        console.log('Iniciando conexão com Supabase...');
+        await testarConexaoSupabase(); // testarConexaoSupabase será atualizado
+        
         if (loadingElement) loadingElement.style.display = 'none';
         if (contentElement) contentElement.style.display = 'block';
 
-        // Inicializar a aplicação
         await inicializarAplicacao();
 
     } catch (error) {
+        // Se o carregarSessaoEPerfil falhar, o auth.js já vai redirecionar
         console.error('Erro na inicialização:', error);
         if (loadingElement) loadingElement.style.display = 'none';
         if (errorElement) {
             errorElement.style.display = 'block';
             errorElement.innerHTML = `
                 <h2>Erro de Conexão</h2>
-                <p>Não foi possível conectar ao banco de dados. Verifique:</p>
-                <ul>
-                    <li>Sua conexão com a internet</li>
-                    <li>Se as credenciais do Supabase estão corretas</li>
-                    <li>Se as tabelas foram criadas no Supabase</li>
-                </ul>
-                <p>Detalhes do erro: ${error.message}</p>
+                <p>${error.message}</p>
                 <button onclick="location.reload()" class="btn-primary">Tentar Novamente</button>
             `;
         }
@@ -55,16 +50,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         const fazendaSelect = document.getElementById('fazenda');
 
         try {
-            // Carregar dados iniciais
+            // Carregar dados iniciais (agora filtrados por empresa)
             await carregarFazendas();
             await carregarTurmas();
             await carregarTurmasDiaria();
-            await carregarFuncionariosIniciais(); 
+            await carregarFuncionariosIniciais();
             await carregarFuncionariosDiariaIniciais();
             await carregarApontamentosRecentes();
             
             // Configurar event listeners
-            
             const turmaSelect = document.getElementById('turma');
             if (turmaSelect) {
                 turmaSelect.addEventListener('change', async function() {
@@ -81,23 +75,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (addFuncionarioBtn) {
                 addFuncionarioBtn.addEventListener('click', () => adicionarFuncionario());
             }
-
             if (addFuncionarioDiariaBtn) {
                 addFuncionarioDiariaBtn.addEventListener('click', adicionarFuncionarioDiaria);
             }
-            
             if (puxarFuncionariosTurmaBtn) {
                 puxarFuncionariosTurmaBtn.addEventListener('click', puxarFuncionariosDaTurma);
             }
-            
             if (apontamentoForm) {
                 apontamentoForm.addEventListener('submit', salvarApontamento);
             }
-
             if (apontamentoDiariaForm) {
                 apontamentoDiariaForm.addEventListener('submit', salvarApontamentoDiaria);
             }
-            
             if (fazendaSelect) {
                 fazendaSelect.addEventListener('change', carregarTalhoes);
             }
@@ -110,15 +99,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // Função para carregar turmas do banco de dados para o formulário Corte
+    // Função para carregar turmas
     async function carregarTurmas() {
         const turmaSelect = document.getElementById('turma');
         if (!turmaSelect) return;
+        const empresaId = window.sistemaAuth.getEmpresaId();
         
         try {
             const { data, error } = await supabase
                 .from('turmas')
                 .select('id, nome')
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('nome');
                 
             if (error) throw error;
@@ -130,24 +121,23 @@ document.addEventListener('DOMContentLoaded', async function() {
                 option.textContent = turma.nome;
                 turmaSelect.appendChild(option);
             });
-
-            console.log(`✅ ${data.length} turmas carregadas para Corte`);
-
         } catch (error) {
             console.error('Erro ao carregar turmas:', error);
             mostrarMensagem('Erro ao carregar turmas', 'error');
         }
     }
 
-    // Função para carregar turmas para o formulário Diária
+    // Função para carregar turmas para Diária
     async function carregarTurmasDiaria() {
         const turmaSelect = document.getElementById('turma-diaria');
         if (!turmaSelect) return;
+        const empresaId = window.sistemaAuth.getEmpresaId();
         
         try {
             const { data, error } = await supabase
                 .from('turmas')
                 .select('id, nome')
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('nome');
                 
             if (error) throw error;
@@ -159,9 +149,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 option.textContent = turma.nome;
                 turmaSelect.appendChild(option);
             });
-
-            console.log(`✅ ${data.length} turmas carregadas para Diária`);
-
         } catch (error) {
             console.error('Erro ao carregar turmas para Diária:', error);
         }
@@ -292,10 +279,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     async function buscarTodosFuncionarios(turmaId = null) {
+        const empresaId = window.sistemaAuth.getEmpresaId();
+        if (!empresaId) return [];
+
         try {
             let query = supabase
                 .from('funcionarios')
                 .select(`id, nome, codigo, turmas(nome)`) 
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('nome'); 
 
             if (turmaId) {
@@ -400,11 +391,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function carregarFazendas() {
         const fazendaSelect = document.getElementById('fazenda');
         if (!fazendaSelect) return;
-        
+        const empresaId = window.sistemaAuth.getEmpresaId();
+
         try {
             const { data, error } = await supabase
                 .from('fazendas')
                 .select('id, nome')
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('nome');
                 
             if (error) throw error;
@@ -429,10 +422,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function carregarTalhoes() {
         const fazendaSelect = document.getElementById('fazenda');
         const talhaoSelect = document.getElementById('talhao');
-        
         if (!fazendaSelect || !talhaoSelect) return;
         
         const fazendaId = fazendaSelect.value;
+        const empresaId = window.sistemaAuth.getEmpresaId();
         
         if (!fazendaId) {
             talhaoSelect.innerHTML = '<option value="">Selecione o talhão</option>';
@@ -444,6 +437,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .from('talhoes')
                 .select('id, numero, area, espacamento, preco_tonelada, producao_estimada')
                 .eq('fazenda_id', fazendaId)
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('numero');
                 
             if (error) throw error;
@@ -473,19 +467,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     function mapearTurmaParaValorPermitido(turmaNome) {
-        const mapeamento = {
-            'Turma A': 'turma1',
-            'Turma B': 'turma2',
-            'Turma C': 'turma3',
-            'Turma D': 'turma1', 
-            'Turma E': 'turma2', 
-            'Turma F': 'turma3'  
-        };
-        
-        return mapeamento[turmaNome] || turmaNome.toLowerCase().replace(/\s/g, ''); 
+        // Esta função provavelmente não é mais necessária se 'turma' for um ID, mas mantemos
+        return turmaNome.toLowerCase().replace(/\s/g, ''); 
     }
 
     async function verificarConflitoApontamento(dataCorte, funcionarioIds, talhaoId = null) {
+        const empresaId = window.sistemaAuth.getEmpresaId();
         try {
             const { data, error } = await supabase
                 .from('cortes_funcionarios')
@@ -494,6 +481,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     funcionarios(nome),
                     apontamentos(data_corte, talhao_id, fazenda_id)
                 `)
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .in('funcionario_id', funcionarioIds);
 
             if (error) throw error;
@@ -614,32 +602,31 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .from('talhoes')
                 .select('espacamento, preco_tonelada, producao_estimada')
                 .eq('id', talhaoId)
-                .single();
+                .single(); // RLS já filtra por empresa
                 
             if (talhaoError) throw talhaoError;
             
             const precoPorMetro = calcularPrecoPorMetro(talhaoData);
             
-            const { data: turmaData, error: turmaError } = await supabase
-                .from('turmas')
-                .select('nome')
-                .eq('id', turmaId)
-                .single();
+            // O nome da turma não é mais salvo, apenas o ID
+            // const { data: turmaData, error: turmaError } = await supabase
+            //     .from('turmas')
+            //     .select('nome')
+            //     .eq('id', turmaId)
+            //     .single();
                 
-            if (turmaError) {
-                throw new Error('Turma selecionada não encontrada no banco de dados');
-            }
-            
-            const turmaNomeOriginal = turmaData?.nome || 'Turma A';
-            const turmaPermitida = mapearTurmaParaValorPermitido(turmaNomeOriginal);
+            // if (turmaError) {
+            //     throw new Error('Turma selecionada não encontrada no banco de dados');
+            // }
+            // const turmaNomeOriginal = turmaData?.nome || 'Turma A';
             
             const dadosApontamento = {
                 data_corte: dataCorte,
-                turma: turmaPermitida,
+                turma_id: turmaId, // <-- SALVA O ID DA TURMA
                 fazenda_id: fazendaId,
                 talhao_id: talhaoId,
                 preco_por_metro: precoPorMetro,
-                usuario_id: usuarioId, // ID do usuário logado
+                usuario_id: usuarioId, // ID do usuário logado (vem do auth.users)
                 empresa_id: empresaId // <-- ID DA EMPRESA
             };
             
@@ -685,10 +672,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function salvarApontamentoDiaria(e) {
         e.preventDefault();
 
-        // Pega o usuário e o ID da empresa da sessão
         const usuarioLogado = window.sistemaAuth.verificarAutenticacao();
         const usuarioId = usuarioLogado?.id;
-        const empresaId = window.sistemaAuth.getEmpresaId(); // <-- NOVO
+        const empresaId = window.sistemaAuth.getEmpresaId(); 
 
         if (!usuarioId || !empresaId) {
             mostrarMensagem('Erro: Sessão do usuário não encontrada. Faça login novamente.', 'error');
@@ -728,7 +714,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     mostrarMensagem(`ERRO: O funcionário ${funcionarioNome} foi adicionado mais de uma vez neste formulário.`, 'error');
                     return;
                 }
-
                 funcionariosDiariaIds.push(funcId);
             }
         }
@@ -751,26 +736,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
 
         try {
-            const { data: turmaData, error: turmaError } = await supabase
-                .from('turmas')
-                .select('nome')
-                .eq('id', turmaId)
-                .single();
-                
-            if (turmaError) {
-                throw new Error('Turma selecionada não encontrada no banco de dados');
-            }
-            
-            const turmaNomeOriginal = turmaData?.nome || 'Turma A';
-            const turmaPermitida = mapearTurmaParaValorPermitido(turmaNomeOriginal);
-            
             const dadosApontamento = {
                 data_corte: dataDiaria,
-                turma: turmaPermitida,
+                turma_id: turmaId, // <-- SALVA O ID DA TURMA
                 fazenda_id: null,
                 talhao_id: null,
                 preco_por_metro: 0, 
-                usuario_id: usuarioId, // ID do usuário logado
+                usuario_id: usuarioId, 
                 empresa_id: empresaId // <-- ID DA EMPRESA
             };
 
@@ -817,6 +789,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function carregarApontamentosRecentes() {
         const apontamentosList = document.getElementById('apontamentos-list');
         if (!apontamentosList) return;
+        const empresaId = window.sistemaAuth.getEmpresaId();
         
         try {
             const { data, error } = await supabase
@@ -824,7 +797,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .select(`
                     id,
                     data_corte,
-                    turma,
+                    turmas(nome), 
                     fazendas(nome),
                     talhoes(numero),
                     cortes_funcionarios(
@@ -832,9 +805,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                         valor
                     )
                 `)
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('data_corte', { ascending: false })
                 .order('id', { ascending: false }) 
-                .limit(5); // RLS (Row Level Security) vai filtrar automaticamente por empresa
+                .limit(5);
 
             if (error) throw error;
             
@@ -881,11 +855,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const tipoApontamento = isDiaria ? 'Diária' : 'Corte';
                 const metrosExibicao = totalMetros > 0 ? totalMetros.toFixed(2) : 'N/A';
                 
-                const nomeTurmaExibicao = apontamento.turma 
-                    ? (apontamento.turma.startsWith('turma') 
-                        ? 'Turma ' + apontamento.turma.slice(5) 
-                        : apontamento.turma) 
-                    : 'N/A';
+                // Agora lemos o nome da turma da tabela relacionada 'turmas'
+                const nomeTurmaExibicao = apontamento.turmas?.nome || 'N/A';
                 
                 html += `
                     <tr>

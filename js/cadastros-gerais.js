@@ -1,4 +1,7 @@
+// js/cadastros-gerais.js - VERSÃO MULTI-EMPRESA (Opção 2)
 document.addEventListener('DOMContentLoaded', async function() {
+    // Verificação de auth removida do topo, é tratada por auth.js
+    
     const loadingElement = document.getElementById('loading');
     const contentElement = document.getElementById('content');
     const errorElement = document.getElementById('error-message');
@@ -7,24 +10,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     const funcionariosList = document.getElementById('funcionarios-list');
     const turmasList = document.getElementById('turmas-list');
     const turmaFuncionarioSelect = document.getElementById('turma-funcionario');
-    const codigoFuncionarioInput = document.getElementById('codigo-funcionario'); // Elemento do código
+    const codigoFuncionarioInput = document.getElementById('codigo-funcionario'); 
 
-    // NOVOS ELEMENTOS PARA FILTRO
     const filtroForm = document.getElementById('filtro-funcionarios-form');
     const filtroNomeCpf = document.getElementById('filtro-nome-cpf');
     const filtroTurmaSelect = document.getElementById('filtro-turma');
     const limparFiltroFuncionariosBtn = document.getElementById('limpar-filtro-funcionarios');
-    // FIM NOVOS ELEMENTOS
     
     let funcionarioEditandoId = null;
     let turmaEditandoId = null;
 
-    // Máscaras para CPF e Telefone
     function aplicarMascaras() {
         const cpfInput = document.getElementById('cpf-funcionario');
         const telefoneInput = document.getElementById('telefone-funcionario');
 
-        cpfInput.addEventListener('input', function(e) {
+        if(cpfInput) cpfInput.addEventListener('input', function(e) {
             let value = e.target.value.replace(/\D/g, '');
             if (value.length > 11) value = value.slice(0, 11);
             
@@ -33,11 +33,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                 value = value.replace(/(\d{3})(\d)/, '$1.$2');
                 value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
             }
-            
             e.target.value = value;
         });
 
-        telefoneInput.addEventListener('input', function(e) {
+        if(telefoneInput) telefoneInput.addEventListener('input', function(e) {
             let value = e.target.value.replace(/\D/g, '');
             if (value.length > 11) value = value.slice(0, 11);
             
@@ -46,7 +45,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             } else if (value.length === 10) {
                 value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
             }
-            
             e.target.value = value;
         });
     }
@@ -56,6 +54,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         contentElement.style.display = 'none';
         errorElement.style.display = 'none';
 
+        // Espera o auth.js carregar o perfil
+        await window.sistemaAuth.carregarSessaoEPerfil();
         await testarConexaoSupabase();
         
         loadingElement.style.display = 'none';
@@ -64,21 +64,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         aplicarMascaras();
         await carregarTurmasParaSelect();
         await carregarTurmasParaFiltro();
-        await carregarFuncionarios(); // Carrega todos na inicialização
+        await carregarFuncionarios(); 
         await carregarTurmas();
         
-        // NOVO: Sugere o próximo código ao carregar a página
         if (codigoFuncionarioInput) {
             await sugerirProximoCodigo();
         }
         
-        funcionarioForm.addEventListener('submit', salvarFuncionario);
-        turmaForm.addEventListener('submit', salvarTurma);
-
-        // NOVOS LISTENERS PARA FILTRO
+        if(funcionarioForm) funcionarioForm.addEventListener('submit', salvarFuncionario);
+        if(turmaForm) turmaForm.addEventListener('submit', salvarTurma);
         if (filtroForm) filtroForm.addEventListener('submit', aplicarFiltrosFuncionarios);
         if (limparFiltroFuncionariosBtn) limparFiltroFuncionariosBtn.addEventListener('click', limparFiltrosFuncionarios);
-        // FIM NOVOS LISTENERS
 
     } catch (error) {
         console.error('Erro na inicialização:', error);
@@ -86,15 +82,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         errorElement.style.display = 'block';
     }
     
-    // FUNÇÃO NOVO: Sugere o próximo código sequencial
     async function sugerirProximoCodigo() {
         if (!codigoFuncionarioInput) return;
+        const empresaId = window.sistemaAuth.getEmpresaId();
         
         try {
-            // 1. Busca o último código cadastrado, ordenando de forma descendente e limitando a 1
             const { data, error } = await supabase
                 .from('funcionarios')
                 .select('codigo')
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('codigo', { ascending: false })
                 .limit(1);
 
@@ -103,39 +99,32 @@ document.addEventListener('DOMContentLoaded', async function() {
             let proximoCodigo = 1;
             
             if (data && data.length > 0 && data[0].codigo) {
-                // 2. Converte o último código para número, incrementa
                 const ultimoCodigo = parseInt(data[0].codigo.replace(/\D/g, ''));
                 if (!isNaN(ultimoCodigo)) {
                     proximoCodigo = ultimoCodigo + 1;
                 }
             }
             
-            // 3. Formata o número de volta para string de 2 dígitos (ex: 1 -> '01', 15 -> '15')
             const codigoFormatado = String(proximoCodigo).padStart(2, '0');
             
-            // 4. Preenche o campo (somente se não estiver em modo de edição)
             if (!funcionarioEditandoId) {
                 codigoFuncionarioInput.value = codigoFormatado;
-                // NOVO: Define como somente leitura para evitar alteração
                 codigoFuncionarioInput.readOnly = true; 
             }
 
         } catch (error) {
             console.error('Erro ao sugerir código:', error);
-            // Em caso de erro, define o valor padrão para 01 e permite edição manual
             codigoFuncionarioInput.value = '01';
             codigoFuncionarioInput.readOnly = false; 
-            mostrarMensagem('Atenção: Não foi possível sugerir o código automático. Verifique a lista.', 'error');
+            mostrarMensagem('Atenção: Não foi possível sugerir o código automático.', 'error');
         }
     }
-
 
     function limparFormularioFuncionario() {
         funcionarioForm.reset();
         funcionarioEditandoId = null;
         document.querySelector('#funcionario-form button[type="submit"]').textContent = 'Salvar Funcionário';
         
-        // NOVO: Garante que o campo seja somente leitura e sugere o próximo código
         if (codigoFuncionarioInput) {
             codigoFuncionarioInput.readOnly = true; 
         }
@@ -150,17 +139,17 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     async function salvarFuncionario(e) {
         e.preventDefault();
+        const empresaId = window.sistemaAuth.getEmpresaId();
         
         const nome = document.getElementById('nome-funcionario').value.trim();
         const cpf = document.getElementById('cpf-funcionario').value.replace(/\D/g, '');
-        const codigo = document.getElementById('codigo-funcionario').value.trim(); // NOVO: Captura o código
+        const codigo = document.getElementById('codigo-funcionario').value.trim();
         const nascimento = document.getElementById('nascimento-funcionario').value;
         const telefone = document.getElementById('telefone-funcionario').value.replace(/\D/g, '');
         const funcao = document.getElementById('funcao-funcionario').value;
         const turmaId = document.getElementById('turma-funcionario').value;
         
-        // Adiciona 'codigo' nas validações
-        if (!nome || !cpf || !codigo || !nascimento || !funcao || !turmaId) { 
+        if (!nome || !cpf || !codigo || !nascimento || !funcao || !turmaId || !empresaId) { 
             mostrarMensagem('Preencha todos os campos obrigatórios, incluindo o Código.', 'error');
             return;
         }
@@ -170,84 +159,67 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
         
-        // NOVO: Validação para Código (ex: 01, 15)
         if (!/^\d{1,2}$/.test(codigo)) {
             mostrarMensagem('O Código do Funcionário deve ter 1 ou 2 dígitos numéricos (ex: 01, 15).', 'error');
             return;
         }
         
         try {
-            // NOVO: Verificar se o código já existe (CORREÇÃO DE UUID)
             let queryCheckCode = supabase
                 .from('funcionarios')
                 .select('id')
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .eq('codigo', codigo);
 
-            // CORREÇÃO: Apenas adiciona o filtro .neq('id', ...) se estivermos em modo de edição.
-            // Isso evita passar um valor vazio ("") para um campo UUID.
             if (funcionarioEditandoId) {
                 queryCheckCode = queryCheckCode.neq('id', funcionarioEditandoId);
             }
 
             const { data: existingCode, error: codeCheckError } = await queryCheckCode.maybeSingle();
-            
             if (codeCheckError) throw codeCheckError;
-
             if (existingCode) {
                 mostrarMensagem('ERRO: Este Código de Funcionário já está em uso.', 'error');
                 return;
             }
 
+            const dadosFuncionario = {
+                nome: nome,
+                cpf: cpf,
+                codigo: codigo,
+                data_nascimento: nascimento,
+                telefone: telefone,
+                funcao: funcao,
+                turma: turmaId,
+                empresa_id: empresaId // <-- ID DA EMPRESA
+            };
+
             let resultado;
-            
             if (funcionarioEditandoId) {
-                // Editar funcionário existente
                 resultado = await supabase
                     .from('funcionarios')
-                    .update({
-                        nome: nome,
-                        cpf: cpf,
-                        codigo: codigo, // NOVO: Salva o código
-                        data_nascimento: nascimento,
-                        telefone: telefone,
-                        funcao: funcao,
-                        turma: turmaId
-                    })
+                    .update(dadosFuncionario)
                     .eq('id', funcionarioEditandoId)
                     .select()
                     .single();
-                    
                 mostrarMensagem('Funcionário atualizado com sucesso!');
             } else {
-                // Criar novo funcionário
                 resultado = await supabase
                     .from('funcionarios')
-                    .insert([{
-                        nome: nome,
-                        cpf: cpf,
-                        codigo: codigo, // NOVO: Salva o código
-                        data_nascimento: nascimento,
-                        telefone: telefone,
-                        funcao: funcao,
-                        turma: turmaId
-                    }])
+                    .insert([dadosFuncionario])
                     .select()
                     .single();
-                    
                 mostrarMensagem('Funcionário salvo com sucesso!');
             }
                 
             if (resultado.error) throw resultado.error;
             
             limparFormularioFuncionario();
-            await carregarFuncionarios(); // Recarrega lista após salvar
+            await carregarFuncionarios();
             
         } catch (error) {
             console.error('Erro ao salvar funcionário:', error);
-            
-            // VERIFICAÇÃO ESPECÍFICA PARA ERRO DE CPF DUPLICADO (chave única: 23505)
             if (error.code === '23505' && error.message.includes('funcionarios_cpf_key')) {
-                mostrarMensagem('ERRO: Este CPF já está cadastrado no sistema. Verifique o CPF ou edite o funcionário existente.', 'error');
+                mostrarMensagem('ERRO: Este CPF já está cadastrado no sistema.', 'error');
             } else {
                 mostrarMensagem('Erro ao salvar funcionário: ' + error.message, 'error');
             }
@@ -256,42 +228,38 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     async function salvarTurma(e) {
         e.preventDefault();
+        const empresaId = window.sistemaAuth.getEmpresaId();
         
         const nome = document.getElementById('nome-turma').value.trim();
         const encarregado = document.getElementById('encarregado-turma').value.trim();
         
-        if (!nome) {
+        if (!nome || !empresaId) {
             mostrarMensagem('Informe o nome da turma.', 'error');
             return;
         }
+
+        const dadosTurma = {
+            nome: nome,
+            encarregado: encarregado,
+            empresa_id: empresaId // <-- ID DA EMPRESA
+        };
         
         try {
             let resultado;
-            
             if (turmaEditandoId) {
-                // Editar turma existente
                 resultado = await supabase
                     .from('turmas')
-                    .update({
-                        nome: nome,
-                        encarregado: encarregado
-                    })
+                    .update(dadosTurma)
                     .eq('id', turmaEditandoId)
                     .select()
                     .single();
-                    
                 mostrarMensagem('Turma atualizada com sucesso!');
             } else {
-                // Criar nova turma
                 resultado = await supabase
                     .from('turmas')
-                    .insert([{
-                        nome: nome,
-                        encarregado: encarregado
-                    }])
+                    .insert([dadosTurma])
                     .select()
                     .single();
-                    
                 mostrarMensagem('Turma salva com sucesso!');
             }
                 
@@ -309,10 +277,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function carregarTurmasParaSelect() {
+        const empresaId = window.sistemaAuth.getEmpresaId();
         try {
             const { data, error } = await supabase
                 .from('turmas')
                 .select('id, nome')
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('nome');
                 
             if (error) throw error;
@@ -329,12 +299,13 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    // NOVO: Função para carregar turmas no filtro
     async function carregarTurmasParaFiltro() {
+        const empresaId = window.sistemaAuth.getEmpresaId();
         try {
             const { data, error } = await supabase
                 .from('turmas')
                 .select('id, nome')
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('nome');
                 
             if (error) throw error;
@@ -351,53 +322,41 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
     
-    // NOVO: Função para aplicar filtros
     async function aplicarFiltrosFuncionarios(e) {
         e.preventDefault();
-        
         const filtroNomeCpfValue = filtroNomeCpf.value.trim();
         const filtroTurmaId = filtroTurmaSelect.value;
-        
         await carregarFuncionarios(filtroNomeCpfValue, filtroTurmaId);
     }
     
-    // NOVO: Função para limpar filtros
     async function limparFiltrosFuncionarios() {
         filtroNomeCpf.value = '';
         filtroTurmaSelect.value = '';
         await carregarFuncionarios();
     }
 
-    // FUNÇÃO ATUALIZADA: carregarFuncionarios com Filtro e Agrupamento
     async function carregarFuncionarios(filtroTexto = '', filtroTurmaId = '') {
+        const empresaId = window.sistemaAuth.getEmpresaId();
         try {
             let query = supabase
                 .from('funcionarios')
                 .select(`
-                    id,
-                    nome,
-                    cpf,
-                    codigo,
-                    data_nascimento,
-                    telefone,
-                    funcao,
-                    turmas(id, nome)
+                    id, nome, cpf, codigo, data_nascimento,
+                    telefone, funcao, turmas(id, nome)
                 `)
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('codigo')
                 .order('nome'); 
             
-            // Aplicar filtro de Turma na consulta Supabase
             if (filtroTurmaId) {
                 query = query.eq('turma', filtroTurmaId);
             }
 
             const { data, error } = await query;
-                
             if (error) throw error;
             
             let funcionariosFiltrados = data || [];
             
-            // Aplicar filtro de Texto (Nome ou CPF) em memória
             if (filtroTexto) {
                 const termo = filtroTexto.toLowerCase();
                 funcionariosFiltrados = funcionariosFiltrados.filter(f => 
@@ -411,7 +370,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 return;
             }
             
-            // 1. Agrupar funcionários por Turma
             const funcionariosPorTurma = funcionariosFiltrados.reduce((acc, funcionario) => {
                 const nomeTurma = funcionario.turmas?.nome || 'Sem Turma Atribuída';
                 if (!acc[nomeTurma]) {
@@ -438,11 +396,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <tbody>
             `;
             
-            // 2. Iterar sobre os grupos e construir o HTML
             const nomesTurmas = Object.keys(funcionariosPorTurma).sort();
             
             nomesTurmas.forEach(nomeTurma => {
-                // Linha de agrupamento por turma
                 html += `
                     <tr class="turma-group-row">
                         <td colspan="8">Turma: ${nomeTurma}</td>
@@ -485,10 +441,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function carregarTurmas() {
+        const empresaId = window.sistemaAuth.getEmpresaId();
         try {
             const { data, error } = await supabase
                 .from('turmas')
                 .select('*')
+                .eq('empresa_id', empresaId) // <-- FILTRO DE EMPRESA
                 .order('nome');
                 
             if (error) throw error;
@@ -552,14 +510,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .from('funcionarios')
                 .select('*')
                 .eq('id', id)
-                .single();
+                .single(); // RLS já garante que só podemos editar da nossa empresa
                 
             if (error) throw error;
             
-            // Preencher o formulário com os dados do funcionário
             document.getElementById('nome-funcionario').value = funcionario.nome;
             document.getElementById('cpf-funcionario').value = funcionario.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-            document.getElementById('codigo-funcionario').value = funcionario.codigo || ''; // NOVO: Preenche o código
+            document.getElementById('codigo-funcionario').value = funcionario.codigo || '';
             document.getElementById('nascimento-funcionario').value = funcionario.data_nascimento;
             document.getElementById('telefone-funcionario').value = funcionario.telefone ? funcionario.telefone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3') : '';
             document.getElementById('funcao-funcionario').value = funcionario.funcao;
@@ -568,12 +525,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             funcionarioEditandoId = id;
             document.querySelector('#funcionario-form button[type="submit"]').textContent = 'Atualizar Funcionário';
             
-            // NOVO: Remove readonly em modo de edição
             if (codigoFuncionarioInput) {
                 codigoFuncionarioInput.readOnly = false; 
             }
 
-            // Rolagem suave até o formulário
             document.getElementById('funcionario-form').scrollIntoView({ behavior: 'smooth' });
             
         } catch (error) {
@@ -608,18 +563,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .from('turmas')
                 .select('*')
                 .eq('id', id)
-                .single();
+                .single(); // RLS já filtra
                 
             if (error) throw error;
             
-            // Preencher o formulário com os dados da turma
             document.getElementById('nome-turma').value = turma.nome;
             document.getElementById('encarregado-turma').value = turma.encarregado || '';
             
             turmaEditandoId = id;
             document.querySelector('#turma-form button[type="submit"]').textContent = 'Atualizar Turma';
             
-            // Rolagem suave até o formulário
             document.getElementById('turma-form').scrollIntoView({ behavior: 'smooth' });
             
         } catch (error) {
@@ -645,7 +598,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             
         } catch (error) {
             console.error('Erro ao excluir turma:', error);
-            mostrarMensagem('Erro ao excluir turma: ' + error.message, 'error');
+            // MODIFICADO: Mensagem de erro mais útil se houver funcionários ligados
+            if (error.code === '23503') { // Foreign key violation
+                 mostrarMensagem('Erro: Não é possível excluir esta turma pois ela ainda contém funcionários. Mova os funcionários para outra turma antes de excluir.', 'error');
+            } else {
+                 mostrarMensagem('Erro ao excluir turma: ' + error.message, 'error');
+            }
         }
     };
 

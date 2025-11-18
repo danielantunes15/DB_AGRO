@@ -19,9 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Função para exibir mensagens
     function showMessage(message, type = 'error') {
-        messageDiv.style.display = 'block';
-        messageDiv.className = `message ${type}`;
-        messageDiv.textContent = message;
+        if (messageDiv) {
+            messageDiv.style.display = 'block';
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+        }
     }
 
     // Função para travar/destravar o formulário
@@ -47,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         setLoading(true);
-        messageDiv.style.display = 'none';
+        if (messageDiv) messageDiv.style.display = 'none';
 
         const email = emailInput.value;
         const password = document.getElementById('password').value;
@@ -92,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         setLoading(true);
-        messageDiv.style.display = 'none';
+        if (messageDiv) messageDiv.style.display = 'none';
 
         try {
             // (Você precisará criar uma página 'reset-password.html')
