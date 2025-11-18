@@ -1,7 +1,16 @@
 // js/gerenciamento-logs.js
+// VERSÃO CORRIGIDA PARA USAR O SISTEMA DE AUTH CUSTOMIZADO (window.sistemaAuth)
+
 document.addEventListener('DOMContentLoaded', async function() {
-    // Verificar autenticação e permissões
-    if (!await verificarPermissoes()) return;
+    
+    // Verificar autenticação e permissões (USANDO O SISTEMA CUSTOMIZADO)
+    if (!window.sistemaAuth || !window.sistemaAuth.requerAdmin()) {
+        console.warn('Acesso negado à página de logs.');
+        // O requerAdmin() já deve ter redirecionado, mas garantimos
+        // Escondendo o conteúdo caso o redirecionamento falhe
+        document.body.innerHTML = '<p>Acesso negado. Você precisa ser administrador.</p><a href="index.html">Voltar</a>';
+        return;
+    }
 
     // Elementos do DOM
     const logoutBtn = document.getElementById('logout-btn');
@@ -22,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     let currentFilters = {};
 
     // Event Listeners
-    logoutBtn.addEventListener('click', logout);
+    if (logoutBtn) logoutBtn.addEventListener('click', logout); // O logout agora é o do auth.js
     applyFiltersBtn.addEventListener('click', aplicarFiltros);
     resetFiltersBtn.addEventListener('click', resetarFiltros);
     prevPageBtn.addEventListener('click', () => mudarPagina(-1));
@@ -32,53 +41,17 @@ document.addEventListener('DOMContentLoaded', async function() {
     await carregarUsuariosFiltro();
     await carregarLogs();
 
-    // Função para verificar permissões
-    async function verificarPermissoes() {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-            window.location.href = 'login.html';
-            return false;
-        }
-
-        // Verificar se é admin
-        const user = session.user;
-        const { data: perfil } = await supabase
-            .from('profiles')
-            .select('tipo, ativo')
-            .eq('id', user.id)
-            .single();
-
-        if (!perfil?.ativo) {
-            alert('Sua conta está desativada.');
-            await logout();
-            return false;
-        }
-
-        if (perfil.tipo !== 'admin') {
-            alert('Acesso negado. Apenas administradores podem visualizar logs.');
-            window.location.href = 'index.html';
-            return false;
-        }
-
-        return true;
-    }
-
-    // Função para logout
-    async function logout() {
-        try {
-            await supabase.auth.signOut();
-            window.location.href = 'login.html';
-        } catch (error) {
-            console.error('Erro ao fazer logout:', error);
-        }
+    // Função para logout (usa o sistemaAuth)
+    function logout() {
+        window.sistemaAuth.fazerLogout();
     }
 
     // Função para carregar usuários no filtro
     async function carregarUsuariosFiltro() {
         try {
+            // Busca da sua tabela 'sistema_usuarios'
             const { data: usuarios, error } = await supabase
-                .from('profiles')
+                .from('sistema_usuarios')
                 .select('username, nome')
                 .order('nome');
 
@@ -100,8 +73,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Função para carregar logs
     async function carregarLogs() {
         try {
+            // (Esta tabela 'access_logs' não existe nos seus arquivos, 
+            // mas assumindo que exista no seu novo banco)
             let query = supabase
-                .from('access_logs')
+                .from('access_logs') // ATENÇÃO: Verifique se o nome desta tabela está correto no seu banco
                 .select('*', { count: 'exact' })
                 .order('created_at', { ascending: false });
 
@@ -109,11 +84,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (currentFilters.user) {
                 query = query.eq('username', currentFilters.user);
             }
-
             if (currentFilters.action) {
                 query = query.eq('action', currentFilters.action);
             }
-
             if (currentFilters.date) {
                 const startDate = new Date(currentFilters.date);
                 const endDate = new Date(startDate);
@@ -122,8 +95,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 query = query.gte('created_at', startDate.toISOString())
                             .lt('created_at', endDate.toISOString());
             }
-
-            if (currentFilters.success !== undefined) {
+            if (currentFilters.success !== undefined && currentFilters.success !== "") {
                 query = query.eq('success', currentFilters.success === 'true');
             }
 
@@ -140,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         } catch (error) {
             console.error('Erro ao carregar logs:', error);
-            mostrarMensagem('Erro ao carregar logs de acesso', 'error');
+            mostrarMensagem('Erro ao carregar logs de acesso. Verifique se a tabela "access_logs" existe.', 'error');
         }
     }
 

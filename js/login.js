@@ -1,13 +1,18 @@
 // js/login.js
 // Lógica da tela de login do DB AGRO
-// Este script assume que 'window.supabase' já foi definido por 'js/config.js'
+// ESTA VERSÃO USA O SISTEMA DE AUTENTICAÇÃO CUSTOMIZADO (js/auth.js)
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Se 'config.js' não carregou ou falhou, o supabase não existirá.
+    // Verifica se os scripts principais foram carregados
     if (!window.supabase) {
         console.error('Erro Crítico: Cliente Supabase não encontrado. Verifique o js/config.js');
-        showMessage('Erro na configuração do sistema. Contate o suporte.', 'error');
+        showMessage('Erro na configuração do sistema (config). Contate o suporte.', 'error');
+        return;
+    }
+    if (!window.sistemaAuth) {
+        console.error('Erro Crítico: Sistema de Autenticação não encontrado. Verifique o js/auth.js');
+        showMessage('Erro na configuração do sistema (auth). Contate o suporte.', 'error');
         return;
     }
 
@@ -15,13 +20,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginButton = document.getElementById('login-button');
     const messageDiv = document.getElementById('login-message');
     const forgotPasswordLink = document.getElementById('forgot-password-link');
-    const emailInput = document.getElementById('email');
+    const emailInput = document.getElementById('email'); // 'email' é o username no seu sistema
 
-    // Função para exibir mensagens
+    // 1. Verificar se o usuário já está logado (usando o sistemaAuth)
+    if (window.sistemaAuth.verificarAutenticacao()) {
+        console.log('Sessão ativa encontrada. Redirecionando para o painel...');
+        window.location.href = 'index.html';
+    }
+
+    // Função para exibir mensagens (usa a função de utils.js)
     function showMessage(message, type = 'error') {
-        messageDiv.style.display = 'block';
-        messageDiv.className = `message ${type}`;
-        messageDiv.textContent = message;
+        // A função 'mostrarMensagem' agora vem do 'utils.js'
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem(message, type);
+        } else {
+            // Fallback caso utils.js não carregue
+            messageDiv.style.display = 'block';
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+        }
     }
 
     // Função para travar/destravar o formulário
@@ -35,85 +52,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 1. Verificar se o usuário já está logado
-    supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-            console.log('Sessão ativa encontrada. Redirecionando para o painel...');
-            window.location.href = 'index.html';
-        }
-    });
-
     // 2. Lidar com o envio do formulário de login
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         setLoading(true);
-        messageDiv.style.display = 'none';
+        if (messageDiv) messageDiv.style.display = 'none';
 
-        const email = emailInput.value;
+        const username = emailInput.value; // O campo 'email' é usado como 'username'
         const password = document.getElementById('password').value;
 
         try {
-            // Usando o Supabase Auth nativo
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
+            // Usando o SEU sistema de autenticação (de js/auth.js)
+            const resultado = await window.sistemaAuth.fazerLogin(username, password);
 
-            if (error) {
-                throw error; // Cai no bloco catch
-            }
-
-            if (data.user) {
+            if (resultado.success) {
                 // Sucesso!
                 showMessage('Login realizado com sucesso! Redirecionando...', 'success');
                 setTimeout(() => {
                     window.location.href = 'index.html';
                 }, 1000);
+            } else {
+                // Erro (ex: "Usuário ou senha incorretos")
+                throw new Error(resultado.error);
             }
         } catch (err) {
             console.error('Erro no login:', err.message);
-            if (err.message === 'Invalid login credentials') {
-                showMessage('Email ou senha incorretos.', 'error');
-            } else {
-                showMessage('Erro ao tentar logar. Verifique sua conexão.', 'error');
-            }
+            showMessage(err.message, 'error');
             setLoading(false);
         }
     });
 
     // 3. Lidar com "Esqueceu a senha?"
-    forgotPasswordLink.addEventListener('click', async (e) => {
+    // (Aviso: Esta funcionalidade não existe no seu auth.js. 
+    // Vamos apenas exibir uma mensagem de "Contate o Suporte")
+    forgotPasswordLink.addEventListener('click', (e) => {
         e.preventDefault();
-        const email = emailInput.value;
-        
-        if (!email) {
-            showMessage('Digite seu email no campo "Email" e clique em "Esqueceu a senha?" para recuperá-la.', 'error');
-            return;
-        }
-
-        setLoading(true);
-        messageDiv.style.display = 'none';
-
-        try {
-            // URL para onde o usuário será enviado após clicar no link do email
-            // (Você precisará criar uma página 'reset-password.html')
-            const redirectTo = `${window.location.origin}/reset-password.html`;
-
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: redirectTo,
-            });
-
-            if (error) {
-                throw error;
-            }
-
-            showMessage('Link de recuperação enviado! Verifique sua caixa de entrada.', 'success');
-        
-        } catch(err) {
-            console.error('Erro ao enviar recuperação:', err.message);
-            showMessage('Erro ao enviar link de recuperação. Tente novamente.', 'error');
-        } finally {
-            setLoading(false);
-        }
+        showMessage('Para redefinir sua senha, por favor, contate o administrador do sistema.', 'error');
     });
 });
