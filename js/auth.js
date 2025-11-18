@@ -10,11 +10,12 @@ class SistemaAuth {
 
     // 1. (NOVO) Busca a sessão e o perfil do usuário
     async carregarSessaoEPerfil() {
-        // Checagem defensiva: GARANTE QUE O SUPABASE FOI CARREGADO
-        if (!window.supabase) {
-             throw new Error("Cliente Supabase não inicializado. Verifique js/config.js.");
-        }
         
+        // Checagem defensiva: GARANTE QUE O CLIENTE FOI CARREGADO
+        if (!window.dbAgroClient) {
+             throw new Error("Cliente Supabase (dbAgroClient) não inicializado. Verifique js/config.js.");
+        }
+
         // Se a verificação já está em andamento, aguarde ela terminar
         if (this.verificacaoEmAndamento) {
             return this.verificacaoEmAndamento;
@@ -23,8 +24,8 @@ class SistemaAuth {
         // Inicia uma nova verificação
         this.verificacaoEmAndamento = new Promise(async (resolve, reject) => {
             try {
-                // Pega a sessão do Supabase (USANDO window.supabase)
-                const { data: { session }, error: sessionError } = await window.supabase.auth.getSession();
+                // Pega a sessão do Supabase (USANDO window.dbAgroClient)
+                const { data: { session }, error: sessionError } = await window.dbAgroClient.auth.getSession();
 
                 if (sessionError) {
                     throw new Error("Erro ao buscar sessão: " + sessionError.message);
@@ -34,8 +35,8 @@ class SistemaAuth {
                 if (session && session.user) {
                     this.usuarioLogado = session.user;
 
-                    // Agora, busca o perfil na tabela 'profiles' (USANDO window.supabase)
-                    const { data: perfil, error: perfilError } = await window.supabase
+                    // Agora, busca o perfil na tabela 'profiles' (USANDO window.dbAgroClient)
+                    const { data: perfil, error: perfilError } = await window.dbAgroClient
                         .from('profiles') // Você precisará ter esta tabela
                         .select('nome, tipo, ativo, empresa_id') // Pedimos o ID da empresa e o tipo
                         .eq('id', this.usuarioLogado.id) // Liga o ID do auth.users com o ID do profiles
@@ -94,9 +95,9 @@ class SistemaAuth {
     // 2. Fazer Logout
     async fazerLogout() {
         console.log('Fazendo logout (Supabase Auth)...');
-        // Checagem defensiva e uso de window.supabase
-        if (window.supabase) {
-            const { error } = await window.supabase.auth.signOut();
+        // Checagem defensiva e uso de window.dbAgroClient
+        if (window.dbAgroClient) {
+            const { error } = await window.dbAgroClient.auth.signOut();
             if (error) console.error('Erro ao sair:', error.message);
         }
         this.usuarioLogado = null;
@@ -155,34 +156,35 @@ window.sistemaAuth = new SistemaAuth();
 
 // Verificação automática em todas as páginas (exceto login)
 document.addEventListener('DOMContentLoaded', function() {
-    // Checagem defensiva: Se window.supabase não existe, paramos aqui
-    if (!window.supabase) {
-        console.error("Autenticação não pode iniciar. Cliente Supabase ausente.");
-        return;
-    }
-
+    
     if (window.location.pathname.includes('login.html')) {
-        // Se já estiver logado (sessão ativa) e acessar login, redirecionar
-        window.supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                // Tenta carregar o perfil para decidir o redirecionamento
-                window.sistemaAuth.carregarSessaoEPerfil().then(() => {
-                    if (window.sistemaAuth.isSuperAdmin()) {
-                        window.location.href = 'gerenciamento-saas.html';
-                    } else {
-                        window.location.href = 'index.html';
-                    }
-                }).catch(error => {
-                    console.error('Erro ao verificar perfil no login:', error);
-                    // Se falhar (ex: perfil deletado), o auth.js irá lidar com isso no próximo carregamento
-                });
-            }
-        });
+        // Checagem defensiva: Se window.dbAgroClient não foi definido (erro no config.js), não faz nada
+        if (window.dbAgroClient) {
+            window.dbAgroClient.auth.getSession().then(({ data: { session } }) => {
+                if (session) {
+                    // Tenta carregar o perfil para decidir o redirecionamento
+                    window.sistemaAuth.carregarSessaoEPerfil().then(() => {
+                        if (window.sistemaAuth.isSuperAdmin()) {
+                            window.location.href = 'gerenciamento-saas.html';
+                        } else {
+                            window.location.href = 'index.html';
+                        }
+                    }).catch(error => {
+                        console.error('Erro ao verificar perfil no login:', error);
+                    });
+                }
+            });
+        }
         return;
     }
     
+    // Checagem defensiva: Se window.dbAgroClient não foi definido (erro no config.js), não faz nada
+    if (!window.dbAgroClient) {
+         console.error("Autenticação não pode iniciar. Cliente Supabase (dbAgroClient) ausente.");
+         return;
+    }
+    
     // Verificar autenticação em todas as outras páginas
-    // Esta chamada agora é a "porta de entrada" que carrega o perfil
     window.sistemaAuth.requerAutenticacao().then(usuario => {
         // NOVO: Se o usuário é SuperAdmin, garante que ele está no painel dele, a menos que ele esteja na página de logs (que também é para admin)
         if (window.sistemaAuth.isSuperAdmin() && 
