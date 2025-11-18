@@ -37,6 +37,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (errorElement) errorElement.style.display = 'none';
         if (relatorioContainer) relatorioContainer.style.display = 'none';
         if (semDados) semDados.style.display = 'none';
+        
+        // NOVO: Carregar sessão e perfil antes de tudo
+        await window.sistemaAuth.carregarSessaoEPerfil();
 
         // Testar conexão
         await testarConexaoSupabase();
@@ -63,7 +66,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
 
-    // ... (funções configurarDatasPadrao, carregarDadosParaFiltros, carregarFuncionariosParaFiltro, carregarTurmasParaFiltro, carregarFazendasParaFiltro, configurarEventListeners, gerarRelatorio, ordenarDados, exibirRelatorio, calcularEstatisticas, preencherTabelaDetalhes, agruparEOrdenarPorFuncionario, adicionarLinhaCabecalhoFuncionario, adicionarLinhaTotalFuncionario, adicionarLinhaCabecalhoData, adicionarLinhaSubtotalData) ...
+    // ... (funções configurarDatasPadrao, carregarDadosParaFiltros, configurarEventListeners, ordenarDados, exibirRelatorio, calcularEstatisticas, preencherTabelaDetalhes, agruparEOrdenarPorFuncionario, adicionarLinhaCabecalhoFuncionario, adicionarLinhaTotalFuncionario, adicionarLinhaCabecalhoData, adicionarLinhaSubtotalData) ...
 
     // Função para configurar datas padrão
     function configurarDatasPadrao() {
@@ -89,6 +92,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Função para carregar funcionários
     async function carregarFuncionariosParaFiltro() {
         if (!funcionarioFiltro) return;
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
 
         try {
             const { data, error } = await supabase
@@ -98,6 +102,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     nome,
                     turmas(nome)
                 `)
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('nome');
 
             if (error) throw error;
@@ -123,11 +128,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Função para carregar turmas
     async function carregarTurmasParaFiltro() {
         if (!turmaFiltro) return;
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
 
         try {
             const { data, error } = await supabase
                 .from('turmas')
                 .select('id, nome')
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('nome');
 
             if (error) throw error;
@@ -153,11 +160,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Função para carregar fazendas
     async function carregarFazendasParaFiltro() {
         if (!fazendaFiltro) return;
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
 
         try {
             const { data, error } = await supabase
                 .from('fazendas')
                 .select('id, nome')
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('nome');
 
             if (error) throw error;
@@ -220,11 +229,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    //
-    // --- INÍCIO DA FUNÇÃO CORRIGIDA ---
-    //
     // Função principal para gerar relatório
     async function gerarRelatorio() {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         const tipoRelatorio = tipoRelatorioSelect.value;
         const funcionarioId = funcionarioFiltro.value;
         const turmaId = turmaFiltro.value;
@@ -257,9 +264,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
             mostrarMensagem('Gerando relatório... Aguarde', 'success');
 
-            // --- INÍCIO DA CORREÇÃO ---
-            // A consulta foi invertida. Agora começa de 'apontamentos'
-            // para aplicar os filtros de data corretamente.
             
             let query = supabase
                 .from('apontamentos')
@@ -283,7 +287,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                         )
                     )
                 `)
-                // Aplica filtros de data DIRETAMENTE na tabela 'apontamentos'
+                // Aplica filtros de empresa e data DIRETAMENTE na tabela 'apontamentos'
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .gte('data_corte', dataInicioValue)
                 .lte('data_corte', dataFimValue);
 
@@ -301,7 +306,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
             const { data: apontamentos, error } = await query;
-            // --- FIM DA CORREÇÃO DA QUERY ---
+            
 
             if (error) throw error;
 
@@ -350,8 +355,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             mostrarMensagem('Erro ao gerar relatório: ' + error.message, 'error');
         }
     }
-    //
-    // --- FIM DA FUNÇÃO CORRIGIDA ---
     //
 
 
@@ -1190,7 +1193,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     async function testarConexaoSupabase() {
         try {
-            const { error } = await supabase.from('turmas').select('id').limit(1);
+            // Não podemos testar em 'turmas' sem o RLS, então usamos uma consulta mais segura
+            const empresaId = window.sistemaAuth.getEmpresaId();
+            const { error } = await supabase.from('turmas').select('id').eq('empresa_id', empresaId).limit(1);
             if (error) throw error;
             console.log('✅ Conexão com Supabase estabelecida');
             return true;

@@ -1,3 +1,4 @@
+// js/fazendas.js
 // Configuração e inicialização para cadastro de fazendas
 document.addEventListener('DOMContentLoaded', async function() {
     // Elementos do DOM
@@ -19,8 +20,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         contentElement.style.display = 'none';
         errorElement.style.display = 'none';
 
-        // Testar conexão com Supabase
-        await testarConexaoSupabase();
+        // NOVO: Carregar sessão e perfil antes de tudo
+        await window.sistemaAuth.carregarSessaoEPerfil();
+        await testarConexaoSupabase(); // testarConexaoSupabase é do utils.js
         
         // Esconder loading e mostrar conteúdo
         loadingElement.style.display = 'none';
@@ -75,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .from('talhoes')
                 .select('espacamento, preco_tonelada, producao_estimada')
                 .eq('id', talhaoId)
-                .single();
+                .single(); // RLS já filtra por empresa
                 
             if (talhaoError) throw talhaoError;
             
@@ -146,7 +148,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function salvarFazenda(e) {
         e.preventDefault();
         
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         const nomeFazenda = document.getElementById('nome-fazenda').value.trim();
+        const proprietario = document.getElementById('proprietario-fazenda').value.trim(); // <--- NOVO
+        const telefone = document.getElementById('telefone-fazenda').value.trim(); // <--- NOVO
         
         if (!nomeFazenda) {
             mostrarMensagem('Informe o nome da fazenda.', 'error');
@@ -160,7 +165,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Editar fazenda existente
                 const { data, error } = await supabase
                     .from('fazendas')
-                    .update({ nome: nomeFazenda })
+                    .update({ 
+                        nome: nomeFazenda,
+                        proprietario: proprietario, 
+                        telefone: telefone
+                    })
                     .eq('id', fazendaEditandoId)
                     .select()
                     .single();
@@ -172,7 +181,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Criar nova fazenda
                 const { data, error } = await supabase
                     .from('fazendas')
-                    .insert([{ nome: nomeFazenda }])
+                    .insert([{ 
+                        nome: nomeFazenda,
+                        proprietario: proprietario, 
+                        telefone: telefone,
+                        empresa_id: empresaId // <--- ADICIONAR ID DA EMPRESA
+                    }])
                     .select()
                     .single();
                     
@@ -195,6 +209,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function salvarTalhao(e) {
         e.preventDefault();
         
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         const fazendaId = fazendaTalhaoSelect.value;
         const numeroTalhao = document.getElementById('numero-talhao').value;
         const areaTalhao = document.getElementById('area-talhao').value;
@@ -211,19 +226,21 @@ document.addEventListener('DOMContentLoaded', async function() {
             let result;
             let atualizandoTalhaoExistente = false;
             
+            const dadosTalhao = {
+                fazenda_id: fazendaId,
+                numero: parseInt(numeroTalhao),
+                area: parseFloat(areaTalhao),
+                espacamento: parseFloat(espacamentoTalhao),
+                preco_tonelada: parseFloat(precoTonelada),
+                producao_estimada: parseFloat(producaoEstimada)
+            };
+
             if (talhaoEditandoId) {
                 // Editar talhão existente
                 atualizandoTalhaoExistente = true;
                 const { data, error } = await supabase
                     .from('talhoes')
-                    .update({
-                        fazenda_id: fazendaId,
-                        numero: parseInt(numeroTalhao),
-                        area: parseFloat(areaTalhao),
-                        espacamento: parseFloat(espacamentoTalhao),
-                        preco_tonelada: parseFloat(precoTonelada),
-                        producao_estimada: parseFloat(producaoEstimada)
-                    })
+                    .update(dadosTalhao)
                     .eq('id', talhaoEditandoId)
                     .select()
                     .single();
@@ -234,7 +251,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 // ATUALIZAR APONTAMENTOS EXISTENTES DESTE TALHÃO
                 try {
-                    // Esta função garante que todos os apontamentos tenham o novo preço e o valor recalculado
                     const { apontamentosAtualizados, cortesAtualizados } = await atualizarApontamentosDoTalhao(talhaoEditandoId);
                     if (apontamentosAtualizados > 0) {
                         mostrarMensagem(`Talhão atualizado! ${apontamentosAtualizados} apontamentos e ${cortesAtualizados} cortes foram atualizados com os novos valores.`, 'success');
@@ -246,16 +262,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
             } else {
                 // Criar novo talhão
+                const dadosParaInsert = {
+                    ...dadosTalhao,
+                    empresa_id: empresaId // <--- ADICIONAR ID DA EMPRESA
+                };
+                
                 const { data, error } = await supabase
                     .from('talhoes')
-                    .insert([{
-                        fazenda_id: fazendaId,
-                        numero: parseInt(numeroTalhao),
-                        area: parseFloat(areaTalhao),
-                        espacamento: parseFloat(espacamentoTalhao),
-                        preco_tonelada: parseFloat(precoTonelada),
-                        producao_estimada: parseFloat(producaoEstimada)
-                    }])
+                    .insert([dadosParaInsert])
                     .select()
                     .single();
                     
@@ -275,10 +289,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Função para carregar fazendas no select
     async function carregarFazendasParaSelect() {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         try {
             const { data, error } = await supabase
                 .from('fazendas')
                 .select('id, nome')
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('nome');
                 
             if (error) throw error;
@@ -298,12 +314,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Função para carregar fazendas e talhões
     async function carregarFazendasETalhoes() {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         try {
             const { data, error } = await supabase
                 .from('fazendas')
                 .select(`
                     id,
                     nome,
+                    proprietario,
+                    telefone,
                     talhoes(
                         id,
                         numero,
@@ -313,6 +332,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         producao_estimada
                     )
                 `)
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('nome');
                 
             if (error) throw error;
@@ -335,10 +355,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 <button class="btn btn-danger btn-sm" onclick="excluirFazenda('${fazenda.id}')">Excluir Tudo</button>
                             </div>
                         </div>
+                        <p style="margin-bottom: 0.5rem; color: var(--text-light); font-size: 0.9rem;">
+                            Proprietário: ${fazenda.proprietario || 'N/A'} | Contato: ${fazenda.telefone || 'N/A'}
+                        </p>
                 `;
                 
                 if (!fazenda.talhoes || fazenda.talhoes.length === 0) {
-                    html += '<p>Nenhum talhão cadastrado.</p>';
+                    html += '<p class="no-talhoes">Nenhum talhão cadastrado.</p>';
                 } else {
                     html += `
                         <table style="width: 100%;">
@@ -365,7 +388,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 <td>${talhao.espacamento}</td>
                                 <td>R$ ${talhao.preco_tonelada.toFixed(2)}</td>
                                 <td>${talhao.producao_estimada.toFixed(2)}</td>
-                                <td>R$ ${precoPorMetro.toFixed(4)}</td>
+                                <td><span class="preco-metro">R$ ${precoPorMetro.toFixed(4)}</span></td>
                                 <td>
                                     <button class="btn btn-secondary btn-sm" onclick="editarTalhao('${talhao.id}')">Editar</button>
                                     <button class="btn btn-danger btn-sm" onclick="excluirTalhao('${talhao.id}')">Excluir</button>
@@ -392,7 +415,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Botão de cancelar para fazenda
         const btnCancelarFazenda = document.createElement('button');
         btnCancelarFazenda.type = 'button';
-        btnCancelarFazenda.className = 'btn-secondary';
+        btnCancelarFazenda.className = 'btn btn-secondary';
         btnCancelarFazenda.textContent = 'Cancelar Edição';
         btnCancelarFazenda.style.marginLeft = '10px';
         btnCancelarFazenda.onclick = limparFormularioFazenda;
@@ -403,7 +426,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Botão de cancelar para talhão
         const btnCancelarTalhao = document.createElement('button');
         btnCancelarTalhao.type = 'button';
-        btnCancelarTalhao.className = 'btn-secondary';
+        btnCancelarTalhao.className = 'btn btn-secondary';
         btnCancelarTalhao.textContent = 'Cancelar Edição';
         btnCancelarTalhao.style.marginLeft = '10px';
         btnCancelarTalhao.onclick = limparFormularioTalhao;
@@ -425,6 +448,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             // Preencher formulário com dados da fazenda
             document.getElementById('nome-fazenda').value = data.nome;
+            document.getElementById('proprietario-fazenda').value = data.proprietario || ''; 
+            document.getElementById('telefone-fazenda').value = data.telefone || ''; 
             
             // Atualizar estado para edição
             fazendaEditandoId = fazendaId;

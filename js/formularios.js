@@ -1,6 +1,14 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // Autenticação
-    if (!window.sistemaAuth || !window.sistemaAuth.requerAutenticacao()) return;
+    if (!window.sistemaAuth) return; // Se auth.js não carregou
+
+    // NOVO: Garantir que o perfil e empresaId estejam carregados
+    try {
+        await window.sistemaAuth.requerAutenticacao();
+    } catch (error) {
+        console.error("Erro de autenticação em formularios.js:", error);
+        return; 
+    }
 
     // Elementos do DOM
     const turmaSelect = document.getElementById('turma-select');
@@ -18,10 +26,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Carrega as turmas no select
     async function carregarTurmas() {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO: Obtém o ID da empresa
         try {
             const { data, error } = await supabase
                 .from('turmas')
                 .select('id, nome')
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('nome');
 
             if (error) throw error;
@@ -42,6 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Gera a pré-visualização do formulário POR TURMA
     async function gerarPreviewPorTurma() {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO: Obtém o ID da empresa
         const turmaId = turmaSelect.value;
         const turmaNome = turmaSelect.options[turmaSelect.selectedIndex].text;
         
@@ -55,6 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .from('funcionarios')
                 .select('nome, codigo')
                 .eq('turma', turmaId)
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('nome'); // ALTERADO: Ordena APENAS por nome (ordem alfabética)
 
             if (error) throw error;
@@ -366,8 +378,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Event Listeners
-    gerarPreviewBtn.addEventListener('click', gerarPreviewPorTurma);
-    gerarBrancoBtn.addEventListener('click', gerarFormularioEmBranco);
+    if (gerarPreviewBtn) gerarPreviewBtn.addEventListener('click', gerarPreviewPorTurma);
+    if (gerarBrancoBtn) gerarBrancoBtn.addEventListener('click', gerarFormularioEmBranco);
     
     // Listener atualizado para o botão de PDF
     if (gerarPdfBtn) {

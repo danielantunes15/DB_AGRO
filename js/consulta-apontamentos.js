@@ -29,6 +29,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         contentElement.style.display = 'none';
         errorElement.style.display = 'none';
 
+        // NOVO: Carregar sessão e perfil antes de tudo
+        await window.sistemaAuth.carregarSessaoEPerfil();
         await testarConexaoSupabase();
         
         loadingElement.style.display = 'none';
@@ -99,11 +101,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function carregarTurmasParaFiltro() {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         try {
             // Buscamos todas as turmas cadastradas para o filtro
             const { data, error } = await supabase
                 .from('turmas')
                 .select('nome')
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('nome');
                 
             if (error) throw error;
@@ -126,10 +130,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function carregarFazendasParaFiltro() {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         try {
             const { data, error } = await supabase
                 .from('fazendas')
                 .select('id, nome')
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('nome');
                 
             if (error) throw error;
@@ -149,6 +155,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function carregarApontamentos(filtros = {}) {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         try {
             let query = supabase
                 .from('apontamentos')
@@ -169,6 +176,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         funcionarios(nome, turmas(nome))
                     )
                 `, { count: 'exact' }) // Adicionado count: 'exact' para paginação
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('data_corte', { ascending: false });
 
             // Aplicar filtros
@@ -318,6 +326,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // NOVA FUNÇÃO: Apagar todos os apontamentos dentro do período filtrado
     async function apagarTudoNoPeriodo() {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         const { dataInicio, dataFim } = currentFilters;
 
         if (!dataInicio || !dataFim) {
@@ -354,6 +363,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             const { data: apontamentosNoPeriodo, error: selectError } = await supabase
                 .from('apontamentos')
                 .select('id')
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .gte('data_corte', dataInicio)
                 .lte('data_corte', dataFim);
                 
@@ -444,35 +454,65 @@ document.addEventListener('DOMContentLoaded', async function() {
     };
 
     async function carregarTurmasParaEdicao(turmaSelecionada = '') {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         const select = document.getElementById('editar-turma');
         select.innerHTML = '<option value="">Selecione a turma</option>';
         
-        // Usamos a lista de turmas já carregada (turmas)
-        turmas.forEach(turma => {
-            const option = document.createElement('option');
-            option.value = turma;
-            option.textContent = turma;
-            option.selected = (turma === turmaSelecionada);
-            select.appendChild(option);
-        });
+        // Buscamos a lista de turmas mais atualizada (filtrada por empresa)
+        try {
+            const { data, error } = await supabase
+                .from('turmas')
+                .select('id, nome')
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
+                .order('nome');
+                
+            if (error) throw error;
+            
+            data.forEach(turma => {
+                const option = document.createElement('option');
+                option.value = turma.id;
+                option.textContent = turma.nome;
+                option.selected = (turma.id === turmaSelecionada);
+                select.appendChild(option);
+            });
+            turmas = data.map(t => t.nome); // Atualiza a lista global de turmas (por nome)
+        } catch (error) {
+             console.error('Erro ao carregar turmas para edição:', error);
+        }
     }
 
     async function carregarFazendasParaEdicao(fazendaSelecionada = '') {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         const select = document.getElementById('editar-fazenda');
         select.innerHTML = '<option value="">Selecione a fazenda</option>';
         
-        // Adiciona a opção de Diária/Nulo se não houver fazenda selecionada
-        if (!fazendaSelecionada) {
-             select.innerHTML += '<option value="">APONTAMENTO DE DIÁRIA (Sem Fazenda)</option>';
+        try {
+            const { data, error } = await supabase
+                .from('fazendas')
+                .select('id, nome')
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
+                .order('nome');
+                
+            if (error) throw error;
+            
+            // Adiciona a opção de Diária/Nulo se não houver fazenda selecionada
+            if (!fazendaSelecionada) {
+                select.innerHTML += '<option value="">APONTAMENTO DE DIÁRIA (Sem Fazenda)</option>';
+            }
+
+            data.forEach(fazenda => {
+                const option = document.createElement('option');
+                option.value = fazenda.id;
+                option.textContent = fazenda.nome;
+                option.selected = (fazenda.id === fazendaSelecionada);
+                select.appendChild(option);
+            });
+            
+            fazendas = data; // Atualiza a lista global de fazendas
+        } catch (error) {
+            console.error('Erro ao carregar fazendas para edição:', error);
         }
 
-        fazendas.forEach(fazenda => {
-            const option = document.createElement('option');
-            option.value = fazenda.id;
-            option.textContent = fazenda.nome;
-            option.selected = (fazenda.id === fazendaSelecionada);
-            select.appendChild(option);
-        });
         
         // Adicionar evento para carregar talhões quando a fazenda mudar
         select.addEventListener('change', function() {
@@ -486,11 +526,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     async function carregarTalhoesParaEdicao(fazendaId, talhaoSelecionado = '') {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         try {
             const { data, error } = await supabase
                 .from('talhoes')
                 .select('id, numero')
                 .eq('fazenda_id', fazendaId)
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .order('numero');
                 
             if (error) throw error;
@@ -521,7 +563,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Determina se é um apontamento de diária (metros muito baixos)
             const isDiaria = corte.metros <= 0.01;
             const metrosExibicao = isDiaria ? `Metros (Diária: ${corte.metros.toFixed(2)}m)` : 'Metros Cortados';
-            const metrosValor = isDiaria ? '0.00' : corte.metros; // Exibe 0 se for diária para evitar confusão
+            const metrosValor = isDiaria ? '0.01' : corte.metros; // Exibe 0.01 se for diária para evitar confusão
 
             corteDiv.innerHTML = `
                 <div class="form-row">
@@ -554,6 +596,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const turma = document.getElementById('editar-turma').value;
         const fazendaId = document.getElementById('editar-fazenda').value || null; // Converte string vazia para null
         const talhaoId = document.getElementById('editar-talhao').value || null; // Converte string vazia para null
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         
         const dataCorteISO = dataCorte.split('T')[0];
         
@@ -590,6 +633,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     .from('talhoes')
                     .select('espacamento, preco_tonelada, producao_estimada')
                     .eq('id', talhaoId)
+                    .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                     .single();
                 
                 if (talhaoError) throw talhaoError;
@@ -730,6 +774,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // FUNÇÃO MODIFICADA: Apagar todos os apontamentos dentro do período filtrado
     async function apagarTudoNoPeriodo() {
+        const empresaId = window.sistemaAuth.getEmpresaId(); // <--- NOVO
         const { dataInicio, dataFim } = currentFilters;
 
         if (!dataInicio || !dataFim) {
@@ -766,6 +811,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             const { data: apontamentosNoPeriodo, error: selectError } = await supabase
                 .from('apontamentos')
                 .select('id')
+                .eq('empresa_id', empresaId) // <--- FILTRO POR EMPRESA
                 .gte('data_corte', dataInicio)
                 .lte('data_corte', dataFim);
                 
