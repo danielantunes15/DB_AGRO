@@ -16,6 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageDiv = document.getElementById('login-message');
     const forgotPasswordLink = document.getElementById('forgot-password-link');
     const emailInput = document.getElementById('email');
+    
+    // NOVO: Elementos de Toggle
+    const toggleEmpresa = document.getElementById('toggle-empresa-login');
+    const toggleAdmin = document.getElementById('toggle-admin-login');
+    let currentLoginType = 'empresa'; // Padrão: login de empresa
 
     // Função para exibir mensagens
     function showMessage(message, type = 'error') {
@@ -36,12 +41,38 @@ document.addEventListener('DOMContentLoaded', () => {
             loginButton.textContent = 'Entrar';
         }
     }
+    
+    // NOVO: Função para alternar o tipo de login
+    function toggleLoginMode(type) {
+        currentLoginType = type;
+        if (type === 'empresa') {
+            toggleEmpresa.classList.remove('btn-secondary');
+            toggleEmpresa.classList.add('btn-primary');
+            toggleAdmin.classList.remove('btn-primary');
+            toggleAdmin.classList.add('btn-secondary');
+        } else {
+            toggleEmpresa.classList.remove('btn-primary');
+            toggleEmpresa.classList.add('btn-secondary');
+            toggleAdmin.classList.remove('btn-secondary');
+            toggleAdmin.classList.add('btn-primary');
+        }
+        showMessage(`Modo de Login: ${type === 'empresa' ? 'Empresa' : 'Gerenciador Central'}`, 'success');
+        if (messageDiv) messageDiv.style.display = 'none';
+    }
+    
+    if (toggleEmpresa) toggleEmpresa.addEventListener('click', () => toggleLoginMode('empresa'));
+    if (toggleAdmin) toggleAdmin.addEventListener('click', () => toggleLoginMode('admin-saas'));
+
 
     // 1. Verificar se o usuário já está logado
+    // A lógica de redirecionamento agora está em js/auth.js, mas mantemos a chamada.
     supabase.auth.getSession().then(({ data: { session } }) => {
         if (session) {
-            console.log('Sessão ativa encontrada. Redirecionando para o painel...');
-            window.location.href = 'index.html';
+            // Se já tem sessão, a lógica de auth.js vai redirecionar
+            console.log('Sessão ativa encontrada. Aguardando redirecionamento de auth.js...');
+        } else {
+            // Garante que o modo inicial é o de empresa
+            toggleLoginMode('empresa');
         }
     });
 
@@ -66,10 +97,38 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (data.user) {
+                // Agora, verificamos o perfil para decidir o redirecionamento.
+                // Carregar o perfil é crucial aqui para saber o tipo de usuário.
+                await window.sistemaAuth.carregarSessaoEPerfil();
+                
+                const isSuperAdmin = window.sistemaAuth.isSuperAdmin();
+                
+                // NOVO: Se o usuário logado é Super Admin, mas tentou o login de empresa
+                if (isSuperAdmin && currentLoginType === 'empresa') {
+                    // Isso é um problema de UX, mas vamos redirecioná-lo para o lugar certo
+                    showMessage('Você logou como Gerenciador Central. Redirecionando...', 'warning');
+                    setTimeout(() => {
+                        window.location.href = 'gerenciamento-saas.html';
+                    }, 1000);
+                    return;
+                }
+                
+                // NOVO: Se o usuário NÃO é Super Admin, mas tentou o login de Admin
+                if (!isSuperAdmin && currentLoginType === 'admin-saas') {
+                    // Falha de login para o modo errado
+                    showMessage('Acesso negado. Esta conta não tem permissões de Gerenciador Central.', 'error');
+                    await supabase.auth.signOut(); // Força o logout
+                    setLoading(false);
+                    return;
+                }
+                
+                // Redirecionamento Final
+                const redirectUrl = isSuperAdmin ? 'gerenciamento-saas.html' : 'index.html';
+
                 // Sucesso!
                 showMessage('Login realizado com sucesso! Redirecionando...', 'success');
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    window.location.href = redirectUrl;
                 }, 1000);
             }
         } catch (err) {

@@ -58,11 +58,15 @@ class SistemaAuth {
                     this.usuarioLogado.tipo = perfil.tipo;
                     this.usuarioLogado.empresa_id = perfil.empresa_id; // <-- O MAIS IMPORTANTE
 
-                    if (!this.usuarioLogado.empresa_id) {
+                    // Se for um usuário normal/admin de uma empresa (tipo != 'superadmin'), ele DEVE ter um empresa_id.
+                    if (perfil.tipo !== 'superadmin' && !this.usuarioLogado.empresa_id) {
                          throw new Error(`Usuário ${this.usuarioLogado.nome} não está associado a nenhuma empresa (empresa_id está nulo).`);
                     }
+                    
+                    // Se for SuperAdmin, o empresa_id será nulo, mas o tipo está definido.
 
-                    console.log('Sessão ativa e perfil carregado para:', this.usuarioLogado.nome, `(Empresa: ${this.usuarioLogado.empresa_id})`);
+
+                    console.log('Sessão ativa e perfil carregado para:', this.usuarioLogado.nome, `(Empresa: ${this.usuarioLogado.empresa_id}, Tipo: ${this.usuarioLogado.tipo})`);
                     resolve(this.usuarioLogado); // Resolve a promise com o usuário
                 
                 } else {
@@ -90,6 +94,7 @@ class SistemaAuth {
         this.perfilUsuario = null;
         this.verificacaoEmAndamento = null; // Reseta a promise de verificação
         if (error) console.error('Erro ao sair:', error.message);
+        // NOVO: Redireciona para o login padrão
         window.location.href = 'login.html';
     }
 
@@ -114,10 +119,14 @@ class SistemaAuth {
         }
     }
 
-    // 4. Verifica se o usuário é admin
+    // 4. Verifica se o usuário é admin da empresa (para gerenciamento-usuarios.html)
     isAdmin() {
-        // Esta função só deve ser chamada DEPOIS que 'requerAutenticacao' foi resolvida
         return this.perfilUsuario && this.perfilUsuario.tipo === 'admin';
+    }
+    
+    // 7. NOVO: Verifica se o usuário é o Super Admin (para o novo painel de ger.)
+    isSuperAdmin() {
+        return this.perfilUsuario && this.perfilUsuario.tipo === 'superadmin';
     }
     
     // 5. Retorna o usuário logado (sincronamente)
@@ -141,7 +150,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Se já estiver logado (sessão ativa) e acessar login, redirecionar
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
-                window.location.href = 'index.html';
+                // Se for superadmin, redireciona para o painel dele
+                if (window.sistemaAuth.isSuperAdmin()) {
+                    window.location.href = 'gerenciamento-saas.html';
+                } else {
+                    // Senão, redireciona para o painel normal da empresa
+                    window.location.href = 'index.html';
+                }
             }
         });
         return;
@@ -149,5 +164,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Verificar autenticação em todas as outras páginas
     // Esta chamada agora é a "porta de entrada" que carrega o perfil
-    window.sistemaAuth.requerAutenticacao();
+    window.sistemaAuth.requerAutenticacao().then(usuario => {
+        // NOVO: Se o usuário é SuperAdmin, garante que ele está no painel dele, a menos que ele esteja na página de logs (que também é para admin)
+        if (window.sistemaAuth.isSuperAdmin() && 
+            !window.location.pathname.includes('gerenciamento-saas.html') &&
+            !window.location.pathname.includes('gerenciamento-logs.html')) {
+            window.location.href = 'gerenciamento-saas.html';
+        }
+    });
 });

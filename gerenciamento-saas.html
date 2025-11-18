@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciamento Central - DB AGRO SAAS</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout.css"> 
+    <link rel="stylesheet" href="css/saas.css">
+    <link rel="stylesheet" href="css/cadastros-gerais.css"> <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1e6035">
+</head>
+<body>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="gerenciamento-saas.html" class="sidebar-logo">DB AGRO SAAS</a>
+        </div>
+        
+        <nav class="nav" id="main-nav">
+            <a href="gerenciamento-saas.html" class="nav-link active">Dashboard</a>
+            <a href="#" id="logout-btn" class="btn-logout">Sair</a>
+        </nav>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="main-content">
+
+        <header class="header">
+            <div class="container">
+                <button class="menu-toggle no-print" id="menu-toggle" aria-label="Abrir Menu">
+                    &#9776; 
+                </button>
+                
+                <h2 class="page-title" id="page-title">Gerenciamento Central</h2>
+                
+                <div></div>
+            </div>
+        </header>
+
+        <main class="main">
+            <div class="container">
+                <div id="alert-container" aria-live="polite"></div>
+
+                <div id="loading" class="card">
+                    <div class="spinner"></div>
+                    <p style="text-align: center;">Verificando permissões...</p>
+                </div>
+
+                <div id="saas-content" style="display: none;">
+                    
+                    <div class="saas-dashboard-grid">
+                        
+                        <div class="saas-card">
+                            <h3>Empresas Ativas</h3>
+                            <div class="saas-stat-value" id="total-empresas">0</div>
+                            <div class="saas-stat-label">Total de Clientes no Sistema</div>
+                        </div>
+
+                        <div class="saas-card" style="border-top-color: #f0ad4e;">
+                            <h3>Faturas Pendentes</h3>
+                            <div class="saas-stat-value" id="faturas-pendentes" style="color: #f0ad4e;">R$ 0,00</div>
+                            <div class="saas-stat-label">Valor total a receber</div>
+                        </div>
+                        
+                        <div class="saas-card" style="border-top-color: #dc3545;">
+                            <h3>Chamados Abertos</h3>
+                            <div class="saas-stat-value" id="chamados-abertos" style="color: #dc3545;">0</div>
+                            <div class="saas-stat-label">Tickets aguardando resposta</div>
+                        </div>
+
+                    </div>
+                    
+                    <div class="card">
+                        <h2>Gestão de Clientes e Faturas</h2>
+                        
+                        <div class="saas-tabs">
+                            <button class="saas-tab-btn active" data-tab="tab-empresas">Empresas Cadastradas</button>
+                            <button class="saas-tab-btn" data-tab="tab-faturas">Faturas (Todos Clientes)</button>
+                            <button class="saas-tab-btn" data-tab="tab-chamados">Chamados de Suporte</button>
+                            <button class="saas-tab-btn" data-tab="tab-cadastro">Cadastrar Nova Empresa</button>
+                        </div>
+                        
+                        <div id="tab-empresas" class="saas-tab-content active">
+                            <h3>Lista de Empresas</h3>
+                            <div id="empresas-list-container" class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Nome da Empresa</th>
+                                            <th>ID da Empresa</th>
+                                            <th>Status</th>
+                                            <th>Usuários</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lista-empresas">
+                                        <tr><td colspan="5" style="text-align: center;">Carregando empresas...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="tab-faturas" class="saas-tab-content">
+                            <h3>Faturas Pendentes e Pagas</h3>
+                            <div id="faturas-list-container" class="table-container">
+                                <p style="text-align: center;">Carregando dados de faturas...</p>
+                            </div>
+                        </div>
+                        
+                        <div id="tab-chamados" class="saas-tab-content">
+                            <h3>Chamados de Suporte</h3>
+                            <div id="chamados-list-container">
+                                <p style="text-align: center;">Carregando chamados...</p>
+                            </div>
+                        </div>
+
+                        <div id="tab-cadastro" class="saas-tab-content">
+                            <h3>Cadastrar Nova Empresa (Cliente)</h3>
+                            <form id="nova-empresa-form" class="form">
+                                <div class="form-group">
+                                    <label for="nome-empresa">Nome da Empresa *</label>
+                                    <input type="text" id="nome-empresa" required placeholder="Ex: AGRO CANA FORTE LTDA">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="email-admin">Email do Primeiro Administrador *</label>
+                                    <input type="email" id="email-admin" required placeholder="admin@empresa.com.br">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="senha-admin">Senha Inicial (Mínimo 6 caracteres) *</label>
+                                    <input type="password" id="senha-admin" required>
+                                </div>
+                                
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary">Criar Empresa e Admin</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <div id="access-denied-message" class="card access-denied" style="display: none;">
+                    <h2>Acesso Negado</h2>
+                    <p>Você não tem permissão para acessar o Painel de Gerenciamento Central.</p>
+                    <a href="index.html" class="btn btn-primary">Voltar para o Painel da Empresa</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/layout.js"></script> 
+    <script src="js/gerenciamento-saas.js"></script>
+</body>
+</html>
