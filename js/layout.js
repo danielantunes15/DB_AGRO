@@ -80,31 +80,33 @@ document.addEventListener('DOMContentLoaded', function() {
     // Encontra o link 'active' e define o título da página
     const pageTitle = document.getElementById('page-title');
     if (pageTitle && mainNav) {
-        // Tenta encontrar um link ativo num item singular
+    
+        // ATUALIZADO: Não executa a lógica de título se estivermos no painel SAAS
+        // O painel SAAS (gerenciamento-saas.js) agora controla o próprio título.
+        if (mainNav.querySelector('.saas-nav-link')) {
+            // Se encontrarmos um 'saas-nav-link', significa que estamos no painel SAAS.
+            // Deixamos o 'gerenciamento-saas.js' cuidar do título.
+            // Apenas definimos o título inicial:
+            pageTitle.textContent = "Visão Geral";
+            return;
+        }
+
+        // Lógica de título para o resto do site (index, cadastros, etc.)
         let activeLink = mainNav.querySelector('.nav-item-single .nav-link.active');
         
-        // Se não encontrar, tenta encontrar num submenu (para quando criar as páginas)
         if (!activeLink) {
              activeLink = mainNav.querySelector('.submenu-link.active');
         }
 
         if (activeLink) {
-            // Pega o texto do link, removendo emojis se houver
             const linkText = activeLink.textContent.trim();
             pageTitle.textContent = linkText;
         } else {
-            // Verifica se o link de Usuários (que não está no submenu) está ativo
              activeLink = mainNav.querySelector('a.nav-link.active[href="gerenciamento-usuarios.html"]');
              if (activeLink) {
                  pageTitle.textContent = "Usuários";
              } else {
-                 // NOVO: Adiciona a verificação para o link SAAS
-                 const saasLink = mainNav.querySelector('a.nav-link.active[href="gerenciamento-saas.html"]');
-                 if (saasLink) {
-                     pageTitle.textContent = saasLink.textContent.trim().replace('🛠️', '').trim(); // Remove o emoji
-                 } else {
-                     pageTitle.textContent = "Dashboard"; // Fallback
-                 }
+                 pageTitle.textContent = "Dashboard"; // Fallback
              }
         }
     }

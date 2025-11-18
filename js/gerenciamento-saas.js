@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const chamadosListContainer = document.getElementById('chamados-list-container');
     
     // Checagem defensiva para inicialização dos clientes Supabase
-    // CORREÇÃO: Verifica o window.dbAgroClient (definido em config.js)
     if (!window.dbAgroClient) {
          mostrarMensagem('Erro: O cliente principal do DB AGRO não está carregado. Verifique a configuração.', 'error');
          loadingElement.style.display = 'none';
@@ -25,8 +24,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const DB_SISTEMAS_URL = 'https://hdmhxtatupfrkwbyusup.supabase.co'; 
     const DB_SISTEMAS_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkbWh4dGF0dXBmcmt3Ynl1c3VwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwNDAzNDgsImV4cCI6MjA3ODYxNjM0OH0.t_2-hT-TtZI1PeGZDHoe-ApWYOT5eCFF2ki8CQa7f9k';
     
-    // Inicializa o cliente Supabase SECUNDÁRIO
-    // CORREÇÃO: Usa o 'supabase' global da CDN, que não foi sobrescrito
     const sbDbSistemas = supabase.createClient(DB_SISTEMAS_URL, DB_SISTEMAS_KEY);
 
 
@@ -52,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // 3. Configurar Event Listeners
         formNovaEmpresa.addEventListener('submit', criarNovaEmpresa);
-        configurarTabs();
+        configurarNavSidebar(); // ATUALIZADO: Substitui configurarTabs()
 
     } catch (error) {
         console.error('Erro na inicialização do painel SAAS:', error);
@@ -65,9 +62,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     async function loadEmpresas() {
         try {
             // Busca todas as empresas (Usa o cliente dbAgroClient)
-            // CORREÇÃO: Trocado 'supabase' por 'window.dbAgroClient'
             const { data, error, count } = await window.dbAgroClient
-                .from('empresas') // Assumindo uma nova tabela 'empresas' para o SaaS
+                .from('empresas') 
                 .select(`
                     *,
                     profiles(count)
@@ -109,24 +105,35 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
     
+    // ATUALIZADO: para incluir novos campos e senha padrão
     async function criarNovaEmpresa(e) {
         e.preventDefault();
         
         const nomeEmpresa = document.getElementById('nome-empresa').value.trim();
+        const cnpj = document.getElementById('cnpj-empresa').value.trim();
+        const nomeResponsavel = document.getElementById('nome-responsavel').value.trim();
+        const cpfResponsavel = document.getElementById('cpf-responsavel').value.trim();
+        const telefoneResponsavel = document.getElementById('telefone-responsavel').value.trim();
         const emailAdmin = document.getElementById('email-admin').value.trim();
-        const senhaAdmin = document.getElementById('senha-admin').value;
+        const senhaAdmin = 'mudar123'; // Senha Padrão
         
-        if (!nomeEmpresa || !emailAdmin || senhaAdmin.length < 6) {
-            mostrarMensagem('Preencha todos os campos. A senha deve ter no mínimo 6 caracteres.', 'error');
+        if (!nomeEmpresa || !cnpj || !nomeResponsavel || !cpfResponsavel || !emailAdmin) {
+            mostrarMensagem('Preencha todos os campos obrigatórios.', 'error');
             return;
         }
 
         try {
             // Chamando a Edge Function (Usa o cliente dbAgroClient)
-            // CORREÇÃO: Trocado 'supabase' por 'window.dbAgroClient'
             const { data, error } = await window.dbAgroClient.functions.invoke('saas-create-company', {
                 body: {
+                    // Dados da Empresa
                     nomeEmpresa: nomeEmpresa,
+                    cnpj: cnpj,
+                    nomeResponsavel: nomeResponsavel,
+                    cpfResponsavel: cpfResponsavel,
+                    telefoneResponsavel: telefoneResponsavel,
+                    
+                    // Dados do Admin
                     emailAdmin: emailAdmin,
                     senhaAdmin: senhaAdmin
                 }
@@ -152,7 +159,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         try {
             // Requer que o SuperAdmin tenha permissão de UPDATE (Usa o cliente dbAgroClient)
-            // CORREÇÃO: Trocado 'supabase' por 'window.dbAgroClient'
             const { error } = await window.dbAgroClient
                 .from('empresas')
                 .update({ ativo: novoStatus })
@@ -174,7 +180,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         try {
             // Chamando Edge Function para exclusão em cascata (Usa o cliente dbAgroClient)
-            // CORREÇÃO: Trocado 'supabase' por 'window.dbAgroClient'
              const { data, error } = await window.dbAgroClient.functions.invoke('saas-delete-company', {
                 body: { empresa_id: empresaId }
             });
@@ -347,20 +352,32 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
 
-    // --- Lógica de Tabs ---
-    function configurarTabs() {
-        const tabBtns = document.querySelectorAll('.saas-tab-btn');
+    // --- Lógica de Navegação (Substitui as Tabs) ---
+    function configurarNavSidebar() {
+        const navLinks = document.querySelectorAll('.saas-nav-link');
         const tabContents = document.querySelectorAll('.saas-tab-content');
+        const pageTitle = document.getElementById('page-title');
 
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
                 const targetTab = this.getAttribute('data-tab');
                 
-                tabBtns.forEach(b => b.classList.remove('active'));
-                tabContents.forEach(c => c.classList.remove('active'));
+                // Atualiza o título da página
+                pageTitle.textContent = this.textContent.trim();
                 
+                // Atualiza links ativos (na sidebar)
+                navLinks.forEach(l => l.classList.remove('active'));
                 this.classList.add('active');
-                document.getElementById(targetTab).classList.add('active');
+                
+                // Mostra o conteúdo correto
+                tabContents.forEach(c => {
+                    if (c.id === targetTab) {
+                        c.classList.add('active');
+                    } else {
+                        c.classList.remove('active');
+                    }
+                });
             });
         });
     }
