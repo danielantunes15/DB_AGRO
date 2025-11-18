@@ -109,6 +109,53 @@ body {
     margin-bottom: 2.5rem;
 }
 
+/* --- NOVO: Estilos para o Toggle de Tipo de Login --- */
+.login-type-toggle {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 25px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--light-bg);
+    overflow: hidden;
+    width: 100%;
+}
+
+.login-type-toggle button {
+    flex: 1;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    
+    /* Resetar estilos padrão de botões e usar o design de "switch" */
+    background: none;
+    color: var(--text-color); /* Cor padrão para botões inativos no toggle */
+    box-shadow: none;
+    border-radius: 0;
+}
+
+/* Estilo para o botão ATIVO (empresa ou gerenciador) */
+.login-type-toggle button.btn-primary {
+    background-color: var(--primary-color); 
+    color: var(--white);
+    border: 1px solid var(--primary-dark);
+}
+
+/* Garante que o botão inativo use o estilo secundário, mas sem cores fortes */
+.login-type-toggle button.btn-secondary {
+    background-color: transparent;
+    color: var(--text-color);
+}
+
+.login-type-toggle button:hover {
+    opacity: 0.9;
+    transform: none; /* Remove efeito de translação em hover */
+}
+
+
 .form-group {
     margin-bottom: 1.25rem;
 }
