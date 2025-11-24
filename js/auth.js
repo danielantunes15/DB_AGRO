@@ -1,4 +1,4 @@
-// js/auth.js - Revertido para Supabase Auth Nativo + RLS
+// js/auth.js - NOVO SISTEMA DE AUTENTICAÇÃO LOCAL (Leitor de Perfil)
 
 class SistemaAuth {
     constructor() {
@@ -7,11 +7,11 @@ class SistemaAuth {
         this.verificacaoEmAndamento = null; 
     }
 
-    // 1. Busca a sessão nativa e o perfil
+    // 1. (MODIFICADO) Busca a sessão do localStorage
     async carregarSessaoEPerfil() {
         
         if (!window.dbAgroClient) {
-             throw new Error("Cliente Supabase (dbAgroClient) não inicializado. Verifique js/config.js.");
+             throw new Error("Cliente Supabase (dbAgroClient) não inicializado.");
         }
 
         if (this.verificacaoEmAndamento) {
@@ -20,56 +20,45 @@ class SistemaAuth {
 
         this.verificacaoEmAndamento = new Promise(async (resolve, reject) => {
             try {
-                // --- NOVO: Lógica de Sessão Nativa ---
-                const { data: { session }, error: sessionError } = await window.dbAgroClient.auth.getSession();
+                // --- Lógica de Sessão Local ---
+                const sessionString = localStorage.getItem('localSessionProfile');
                 this.usuarioLogado = null;
                 this.perfilUsuario = null;
 
-                if (sessionError) {
-                    throw new Error("Erro ao buscar sessão: " + sessionError.message);
+                if (!sessionString) {
+                    resolve(null); // Sem token, sem sessão
+                    return;
                 }
-
-                if (session && session.user) {
-                    this.usuarioLogado = session.user;
-
-                    // Busca o perfil na tabela 'profiles'
-                    const { data: perfil, error: perfilError } = await window.dbAgroClient
-                        .from('profiles') 
-                        .select('nome, tipo, ativo, empresa_id') 
-                        .eq('id', this.usuarioLogado.id) 
-                        .single();
-
-                    if (perfilError) {
-                        if (perfilError.code === 'PGRST116') { // "single() returned 0 rows"
-                             // Se a conta existe no Auth mas não no profiles (deve ser um e-mail válido!)
-                            throw new Error(`Usuário não possui perfil cadastrado. Necessário RLS e/ou trigger.`);
-                        }
-                        throw new Error("Erro ao buscar perfil do usuário: " + perfilError.message);
-                    }
-                    
-                    if (!perfil.ativo) {
-                        console.warn('Usuário está logado, mas inativo. Fazendo logout.');
-                        await this.fazerLogout();
-                        resolve(null); 
-                        return;
-                    }
-
-                    this.perfilUsuario = perfil;
-                    
-                    this.usuarioLogado.nome = perfil.nome || this.usuarioLogado.email; 
-                    this.usuarioLogado.tipo = perfil.tipo;
-                    this.usuarioLogado.empresa_id = perfil.empresa_id;
-
-                    console.log('Sessão ativa e perfil carregado para:', this.usuarioLogado.nome, `(Empresa: ${this.usuarioLogado.empresa_id}, Tipo: ${this.usuarioLogado.tipo})`);
-                    resolve(this.usuarioLogado); 
                 
-                } else {
+                const perfil = JSON.parse(sessionString);
+                
+                // Validação mínima
+                if (!perfil || !perfil.id || !perfil.tipo || !perfil.login_time) {
+                    this.fazerLogout(false);
                     resolve(null);
+                    return;
                 }
+
+                // Simulação da estrutura de usuário do Supabase Auth
+                this.perfilUsuario = perfil;
+                this.usuarioLogado = {
+                    id: perfil.id,
+                    email: perfil.email,
+                    nome: perfil.nome || perfil.email, 
+                    tipo: perfil.tipo,
+                    empresa_id: perfil.empresa_id
+                };
+                
+                // --- Fim da Lógica de Sessão Local ---
+
+                // Você pode adicionar aqui uma RPC para revalidar a sessão no banco se for necessário mais segurança
+                
+                console.log('Sessão ativa e perfil local carregado para:', this.usuarioLogado.nome, `(Empresa: ${this.usuarioLogado.empresa_id}, Tipo: ${this.usuarioLogado.tipo})`);
+                resolve(this.usuarioLogado); 
+
             } catch (error) {
                 console.error('Erro no carregarSessaoEPerfil:', error.message);
-                this.usuarioLogado = null;
-                this.perfilUsuario = null;
+                this.fazerLogout(false);
                 reject(error); 
             }
         });
@@ -77,14 +66,13 @@ class SistemaAuth {
         return this.verificacaoEmAndamento;
     }
 
-    // 2. Fazer Logout (Revertido para Auth Nativo)
+    // 2. Fazer Logout (MODIFICADO)
     async fazerLogout(doRedirect = true) {
-        console.log('Fazendo logout (Supabase Auth)...');
+        console.log('Fazendo logout (Local)...');
         
-        if (window.dbAgroClient) {
-            const { error } = await window.dbAgroClient.auth.signOut();
-            if (error) console.error('Erro ao sair:', error.message);
-        }
+        // Remove o token local
+        localStorage.removeItem('localSessionProfile');
+        
         this.usuarioLogado = null;
         this.perfilUsuario = null;
         this.verificacaoEmAndamento = null; 
@@ -93,18 +81,27 @@ class SistemaAuth {
             window.location.href = 'login.html';
         }
     }
-    // (O restante dos métodos são mantidos, usando as propriedades atualizadas do perfil)
+
+    // 3. Verifica se a página requer autenticação (Mantido, usa a nova lógica)
     async requerAutenticacao() {
-        // ... (lógica de autenticação e redirecionamento de auth.js, mantida)
         try {
             const usuario = await this.carregarSessaoEPerfil();
-            
-            // Redirecionamento de login.html, etc... (a lógica inteira é mantida)
-            if (!usuario && !window.location.pathname.includes('login.html')) {
-                window.location.href = 'login.html';
+
+            if (!usuario) {
+                if (!window.location.pathname.includes('login.html')) {
+                    window.location.href = 'login.html';
+                }
                 return false;
             }
-            // ... (restante das checagens de permissão)
+            
+            // Lógica de restrição de acesso SuperAdmin (mantida)
+            if (this.isSuperAdmin() && 
+                !window.location.pathname.includes('gerenciamento-saas.html') &&
+                !window.location.pathname.includes('gerenciamento-logs.html')) {
+                window.location.href = 'gerenciamento-saas.html';
+                return false;
+            }
+            
             return true;
         } catch (error) {
             console.error('Falha na autenticação, redirecionando para login:', error.message);
@@ -112,7 +109,7 @@ class SistemaAuth {
             return false;
         }
     }
-    
+
     isAdmin() {
         return this.perfilUsuario && this.perfilUsuario.tipo === 'admin';
     }
@@ -130,43 +127,27 @@ class SistemaAuth {
     }
 }
 
-// (O restante do código de verificação automática do auth.js é mantido)
+// Inicialização Global
 window.sistemaAuth = new SistemaAuth();
 
 document.addEventListener('DOMContentLoaded', function() {
     
-    // Checagem defensiva: Se window.dbAgroClient não foi definido (erro no config.js), não faz nada
     if (!window.dbAgroClient) {
          console.error("Autenticação não pode iniciar. Cliente Supabase (dbAgroClient) ausente.");
          return;
     }
     
-    // Verifica se é a página de login
+    // Verifica se é a página de login para evitar loop
     if (window.location.pathname.includes('login.html')) {
-        window.dbAgroClient.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                window.sistemaAuth.carregarSessaoEPerfil().then(() => {
-                    const usuario = window.sistemaAuth.verificarAutenticacao();
-                    if (usuario?.tipo === 'superadmin') {
-                        window.location.href = 'gerenciamento-saas.html';
-                    } else if (usuario) {
-                        window.location.href = 'index.html';
-                    }
-                }).catch(error => {
-                    console.error('Erro ao verificar perfil no login:', error);
-                });
+        window.sistemaAuth.carregarSessaoEPerfil().then(usuario => {
+            if (usuario) {
+                const redirectUrl = usuario.tipo === 'superadmin' ? 'gerenciamento-saas.html' : 'index.html';
+                window.location.href = redirectUrl;
             }
         });
         return;
     }
     
     // Verificar autenticação em todas as outras páginas
-    window.sistemaAuth.requerAutenticacao().then(usuario => {
-        // NOVO: Se o usuário é SuperAdmin, garante que ele está no painel dele, a menos que ele esteja na página de logs (que também é para admin)
-        if (window.sistemaAuth.isSuperAdmin() && 
-            !window.location.pathname.includes('gerenciamento-saas.html') &&
-            !window.location.pathname.includes('gerenciamento-logs.html')) {
-            window.location.href = 'gerenciamento-saas.html';
-        }
-    });
+    window.sistemaAuth.requerAutenticacao();
 });

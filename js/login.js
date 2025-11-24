@@ -1,23 +1,21 @@
-// js/login.js - Revertido para Supabase Auth Nativo + RLS
-// Usa o campo 'email' no front-end para o login.
+// js/login.js - CORRIGIDO PARA USAR RPC (A Solução Mais Simples e Segura)
 
 document.addEventListener('DOMContentLoaded', () => {
     
     if (!window.dbAgroClient) {
-        console.error('Erro Crítico: Cliente Supabase (dbAgroClient) não encontrado. Verifique o js/config.js');
+        console.error('Erro Crítico: Cliente Supabase (dbAgroClient) não encontrado.');
         return;
     }
 
     const loginForm = document.getElementById('login-form');
     const loginButton = document.getElementById('login-button');
     const messageDiv = document.getElementById('login-message');
-    const emailInput = document.getElementById('email'); 
+    const forgotPasswordLink = document.getElementById('forgot-password-link');
+    const emailInput = document.getElementById('email'); // Campo de Login
     
-    // Simplificando o front-end: Remove a lógica de alternância (toggle)
     const toggleEmpresa = document.getElementById('toggle-empresa-login');
     const toggleAdmin = document.getElementById('toggle-admin-login');
-    if (toggleEmpresa) toggleEmpresa.classList.remove('btn-secondary');
-    if (toggleAdmin) toggleAdmin.style.display = 'none';
+    let currentLoginType = 'empresa'; 
 
     function showMessage(message, type = 'error') {
         if (messageDiv) {
@@ -37,46 +35,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // 1. Lógica para verificação de sessão inicial (feita em auth.js)
-    // O auth.js redireciona se já estiver logado.
+    function toggleLoginMode(type) {
+        currentLoginType = type;
+        if (type === 'empresa') {
+            toggleEmpresa.classList.remove('btn-secondary');
+            toggleEmpresa.classList.add('btn-primary');
+            toggleAdmin.classList.remove('btn-primary');
+            toggleAdmin.classList.add('btn-secondary');
+        } else {
+            toggleEmpresa.classList.remove('btn-primary');
+            toggleEmpresa.classList.add('btn-secondary');
+            toggleAdmin.classList.remove('btn-secondary');
+            toggleAdmin.classList.add('btn-primary');
+        }
+        if (messageDiv) messageDiv.style.display = 'none';
+    }
+    
+    if (toggleEmpresa) toggleEmpresa.addEventListener('click', () => toggleLoginMode('empresa'));
+    if (toggleAdmin) toggleAdmin.addEventListener('click', () => toggleLoginMode('admin-saas'));
 
-    // 2. Lidar com o envio do formulário de login (REVERTIDO PARA AUTH NATIVO)
+    // 1. Verificar se o usuário já está logado (usando a lógica de sessão local do auth.js)
+    window.sistemaAuth.carregarSessaoEPerfil().then(usuario => {
+         if (!usuario) toggleLoginMode('empresa');
+    });
+
+    // 2. Lidar com o envio do formulário de login (CHAMADA RPC)
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         setLoading(true);
         if (messageDiv) messageDiv.style.display = 'none';
 
-        // Usa o campo 'email' para o login no Supabase Auth.
-        // Se você mudou o campo para "Login" no HTML, ele ainda envia o valor do ID 'email'.
-        const email = emailInput.value;
+        // O valor do input (texto) é usado como username (ex: DANIEL.ANTUNES)
+        const username = emailInput.value.trim(); 
         const password = document.getElementById('password').value;
 
         try {
-            // Chamada nativa ao Supabase Auth
-            const { error } = await window.dbAgroClient.auth.signInWithPassword({
-                email: email,
-                password: password,
+            // CHAMADA AO RPC: custom_login
+            const { data: userProfiles, error } = await window.dbAgroClient.rpc('custom_login', {
+                username: username,
+                plain_password: password
             });
 
             if (error) {
-                // Erros comuns: Invalid login credentials
-                throw error; 
+                console.error('Erro RPC de Login:', error);
+                throw new Error("Erro de comunicação com o banco de dados."); 
             }
             
-            // Sucesso! A sessão é criada. Agora, verifica o perfil para redirecionar.
-            await window.sistemaAuth.carregarSessaoEPerfil(); 
+            // O RPC retorna um array com 1 ou 0 perfis
+            const userProfile = userProfiles ? userProfiles[0] : null;
+
+            if (!userProfile) {
+                throw new Error("Login ou senha incorretos.");
+            }
             
-            const usuario = window.sistemaAuth.verificarAutenticacao();
-            
-            if (!usuario) {
-                // Se a sessãoAuth deu certo, mas o perfil não foi encontrado/está inativo
-                showMessage('Login realizado, mas perfil inválido ou inativo. Faça login novamente.', 'error');
-                await window.dbAgroClient.auth.signOut();
-                setLoading(false);
-                return;
+            if (!userProfile.ativo) {
+                throw new Error("Usuário inativo. Contate o administrador.");
             }
 
-            const isSuperAdmin = usuario.tipo === 'superadmin';
+            // --- VALIDAÇÃO DE TIPO E CRIAÇÃO DA SESSÃO LOCAL ---
+            const isSuperAdmin = userProfile.tipo === 'superadmin';
+
+            if (isSuperAdmin && currentLoginType !== 'admin-saas') {
+                throw new Error("Use o modo 'Login Gerenciador' para esta conta.");
+            }
+            if (!isSuperAdmin && currentLoginType === 'admin-saas') {
+                throw new Error("Acesso negado. Esta conta não é de Gerenciador Central.");
+            }
+            
+            // Salva o perfil no localStorage para que o auth.js possa lê-lo
+            localStorage.setItem('localSessionProfile', JSON.stringify({
+                 id: userProfile.id,
+                 tipo: userProfile.tipo,
+                 empresa_id: userProfile.empresa_id,
+                 email: userProfile.email,
+                 nome: userProfile.nome,
+                 login_time: Date.now()
+            })); 
+
+            // Força o auth.js a carregar o novo perfil e redirecionar
+            await window.sistemaAuth.carregarSessaoEPerfil(); 
+            
             const redirectUrl = isSuperAdmin ? 'gerenciamento-saas.html' : 'index.html';
 
             showMessage('Login realizado com sucesso! Redirecionando...', 'success');
@@ -86,21 +124,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (err) {
             console.error('Erro no login:', err.message);
-            if (err.message.includes('Invalid login credentials')) {
-                showMessage('Login ou senha incorretos.', 'error');
-            } else {
-                showMessage('Erro de rede. Verifique sua conexão.', 'error');
-            }
+            showMessage('Erro: ' + (err.message.includes('Login ou senha') ? 'Login ou senha incorretos.' : err.message), 'error');
             setLoading(false);
+            localStorage.removeItem('localSessionProfile');
         }
     });
 
-    // 3. Lidar com "Esqueceu a senha?" (Volta a usar a função nativa)
-    // Se o campo 'email' for realmente um login como ADMIN.EMPRESA, a recuperação NATIVA do Supabase não funcionará.
-    // É necessário que o login seja um e-mail válido no Auth.
-    // No seu novo modelo, a recuperação deve ser desativada.
+    // 3. Lidar com "Esqueceu a senha?" (Desativado)
     document.getElementById('forgot-password-link').addEventListener('click', (e) => {
         e.preventDefault();
-        showMessage('Recuperação de senha desativada. Contate o administrador.', 'error');
+        showMessage('Recuperação de senha desativada.', 'error');
     });
 });
